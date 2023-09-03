@@ -1,4 +1,6 @@
 # RGL (Riley's OpenGL abstraction Layer)
+![logo](logo.png)
+
 Simple OpenGL version abstraction layer based on [RLGL](https://github.com/raysan5/raylib/blob/master/src/rlgl.h). 
 
 Allows you to use Modern OpenGL using the simple pipeline format.
