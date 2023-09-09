@@ -1,3 +1,1 @@
-- check support for multiple shapes
-- ortho
-- optimizations 
+- optimizations (SIMD)
