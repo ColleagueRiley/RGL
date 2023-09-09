@@ -163,8 +163,13 @@ inline void rglSetTexture(u32 id);               /* Set current texture for rend
 inline void rglBegin(int mode);
 inline void rglEnd(void);
 inline void rglTexCoord2f(float x, float y); 
+
+inline void rglColor3ub(u8 r, u8 g, u8 b);
 inline void rglColor4ub(u8 r, u8 g, u8 b, u8 a);
-inline void rglColor4f(float x, float y, float z, float w);
+
+inline void rglColor3f(float r, float g, float b);
+inline void rglColor4f(float r, float g, float b, float a);
+
 inline void rglVertex2f(float x, float y);
 inline void rglVertex3f(float x, float y, float z);
 
@@ -235,6 +240,9 @@ typedef struct RGL_INFO {
     RGL_MATRIX modelview;                   /* Default modelview matrix */
     RGL_MATRIX projection;                  /* Default projection matrix */
     
+	RGL_MATRIX transform; /* transformation matrix*/
+	u8 transformRequired;
+
     #ifdef RGL_ALLOC_MATRIX_STACK 
     RGL_MATRIX* stack
     #else
@@ -743,7 +751,7 @@ void rglTexCoord2f(float x, float y) {
 }
 
 /* Define one vertex (color) */
-void rglColor3ub(u8 r, u8 g, u8 b, u8 a) {
+void rglColor3ub(u8 r, u8 g, u8 b) {
     rglColor4ub(r, g, b, 255);
 } 
 
@@ -751,8 +759,8 @@ void rglColor4ub(u8 r, u8 g, u8 b, u8 a) {
     rglColor4f(r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 }
 
-void rglColor3f(float r, float g, float b, float a) {
-    rglColor4f(r, g, b, 255);
+void rglColor3f(float r, float g, float b) {
+    rglColor4f(r, g, b, 1);
 }
 
 void rglColor4f(float r, float g, float b, float a) {
@@ -771,6 +779,12 @@ void rglVertex3f(float x, float y, float z) {
     float tx = x;
     float ty = y;
     float tz = z;
+
+    if (RGLinfo.transformRequired){
+        tx = RGLinfo.transform.m[0] * x + RGLinfo.transform.m[4] * y + RGLinfo.transform.m[8] * z + RGLinfo.transform.m[12];
+        ty = RGLinfo.transform.m[1] * x + RGLinfo.transform.m[5] * y + RGLinfo.transform.m[9] * z + RGLinfo.transform.m[13];
+        tz = RGLinfo.transform.m[2] * x + RGLinfo.transform.m[6] * y + RGLinfo.transform.m[10] * z + RGLinfo.transform.m[14];
+    }
 
     if (RGLinfo.vertexCounter > (RGLinfo.elementCount * 4 - 4)) {
         if ((RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES) &&
@@ -878,6 +892,12 @@ void rglMatrixMode(int mode) {
 /* Push the current matrix into RGLinfo.stack */
 void rglPushMatrix(void) {
     RGLinfo.stack[RGLinfo.stackCounter] = *RGLinfo.matrix;
+
+    if (RGLinfo.matrixMode == RGL_MODELVIEW) {
+        RGLinfo.transformRequired = 1;
+        RGLinfo.matrix = &RGLinfo.transform;
+    }
+
     RGLinfo.stackCounter++;
 }
 
@@ -889,8 +909,10 @@ void rglPopMatrix(void) {
         RGLinfo.stackCounter--;
     }
 
-    if ((RGLinfo.stackCounter == 0) && (RGLinfo.matrixMode == RGL_MODELVIEW))
+    if ((RGLinfo.stackCounter == 0) && (RGLinfo.matrixMode == RGL_MODELVIEW)) {
         RGLinfo.matrix = &RGLinfo.modelview;
+		RGLinfo.transformRequired = 0;
+	}
 }
 
 /* Reset current matrix to identity matrix */
