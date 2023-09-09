@@ -58,15 +58,18 @@ void glPrerequisites(rect r, color c) {
     rglLoadIdentity();
     rglPushMatrix();
 
+    rglMatrixMode(RGL_MODELVIEW);
+    rglPushMatrix();
+
     rglOrtho(0, width, height, 0, -width, width);
 
-    //rglTranslatef((r.x + (r.w / 2)), (r.x + (r.h / 2)), 0);
-    /*rglRotatef(rotate[0],  0, 0, 1);
+    
+    rglTranslatef((r.x + (r.w / 2)), (r.x + (r.h / 2)), 0);
+    rglRotatef(rotate[0],  0, 0, 1);
     rglRotatef(rotate[1], 0, 1, 0);
-    rglRotatef(rotate[2], 1, 0, 0);*/
+    rglRotatef(rotate[2], 1, 0, 0);
 
-    //rglTranslatef(-(r.x + (r.w / 2)), -(r.x + (r.h / 2)), 0);
-    rglMatrixMode(RGL_MODELVIEW);
+    rglTranslatef(-(r.x + (r.w / 2)), -(r.x + (r.h / 2)), 0);
 }
 
 int main() {
@@ -101,33 +104,36 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
         
         rglSetTexture(tex);
-
-        glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
         
-        rglBegin(GL_TRIANGLES);
+        rglBegin(GL_QUADS);
             rglColor3f(1, 0, 0); rglVertex2f(-0.6, -0.75);
+            rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
             rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
             rglColor3f(0, 0, 1); rglVertex2f(0, 0.75);
         rglEnd();
 
+
+        glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
         rglSetTexture(tex2);
         rglBegin(GL_QUADS);
-        rglTexCoord3f(0, 0, 0);
+        rglTexCoord2f(0, 0);
         rglColor4f(1, 0, 0, 1); 
         rglVertex3f(300, 300, 0);
         
-        rglTexCoord3f(1, 0, 0);
+        rglTexCoord2f(1, 0);
         rglColor4f(0, 1, 0, 1); 
         rglVertex3f(400, 300, 0);
         
-        rglTexCoord3f(1, 0, 0);
+        rglTexCoord2f(1, 0);
         rglColor4f(0, 1, 0, 1); 
         rglVertex3f(400, 300, 0);
         
-        rglTexCoord3f(0.5f, 1, 0);
+        rglTexCoord2f(0.5f, 1);
         rglColor4f(0, 0, 1, 1); 
         rglVertex3f(250, 400, 0);
         rglEnd();
+        
+        rglPopMatrix();
         rglPopMatrix();
 
         rglRenderBatch();
