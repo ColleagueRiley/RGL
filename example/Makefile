@@ -23,6 +23,7 @@ all:
 	fi
 
 	make main
+	make gl
 
 ext/Silicon/mac.o:
 	cd ext/Silicon/ && gcc -c *.m
