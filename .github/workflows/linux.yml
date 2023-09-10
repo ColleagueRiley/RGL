@@ -13,11 +13,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: configure
-      run: ./configure
+    - name: apt-update
+      run: sudo apt-get update
+    - name: apt
+      run: sudo apt-get install mesa-common-dev libglx-dev libxcursor-dev      
     - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+      run: cd example && make

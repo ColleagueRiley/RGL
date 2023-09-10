@@ -9,15 +9,11 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v3
-    - name: configure
-      run: ./configure
+    - name: silicon-binaries
+      run: git clone https://github.com/ColleagueRiley/Silicon -b binaries && cp Silicon/ARM/*.o example/ext/Silicon/
     - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+      run: cd example && make
