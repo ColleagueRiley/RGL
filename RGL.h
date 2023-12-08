@@ -112,6 +112,54 @@ typedef u8 b8;
 #define RGL_QUADS                                0x0007      /* GL_QUADS */
 #endif
 
+#ifndef GL_PERSPECTIVE_CORRECTION_HINT
+#define GL_PERSPECTIVE_CORRECTION_HINT		0x0C50
+#define GL_POINT_SMOOTH_HINT			0x0C51
+#define GL_LINE_SMOOTH_HINT			0x0C52
+#define GL_POLYGON_SMOOTH_HINT			0x0C53
+#define GL_FOG_HINT				0x0C54
+#define GL_DONT_CARE				0x1100
+#define GL_FASTEST				0x1101
+#define GL_NICEST				0x1102
+#endif
+
+#ifndef GL_SMOOTH
+#define GL_LIGHTING				0x0B50
+#define GL_LIGHT0				0x4000
+#define GL_LIGHT1				0x4001
+#define GL_LIGHT2				0x4002
+#define GL_LIGHT3				0x4003
+#define GL_LIGHT4				0x4004
+#define GL_LIGHT5				0x4005
+#define GL_LIGHT6				0x4006
+#define GL_LIGHT7				0x4007
+#define GL_SPOT_EXPONENT			0x1205
+#define GL_SPOT_CUTOFF				0x1206
+#define GL_CONSTANT_ATTENUATION			0x1207
+#define GL_LINEAR_ATTENUATION			0x1208
+#define GL_QUADRATIC_ATTENUATION		0x1209
+#define GL_AMBIENT				0x1200
+#define GL_DIFFUSE				0x1201
+#define GL_SPECULAR				0x1202
+#define GL_SHININESS				0x1601
+#define GL_EMISSION				0x1600
+#define GL_POSITION				0x1203
+#define GL_SPOT_DIRECTION			0x1204
+#define GL_AMBIENT_AND_DIFFUSE			0x1602
+#define GL_COLOR_INDEXES			0x1603
+#define GL_LIGHT_MODEL_TWO_SIDE			0x0B52
+#define GL_LIGHT_MODEL_LOCAL_VIEWER		0x0B51
+#define GL_LIGHT_MODEL_AMBIENT			0x0B53
+#define GL_FRONT_AND_BACK			0x0408
+#define GL_SHADE_MODEL				0x0B54
+#define GL_FLAT					0x1D00
+#define GL_SMOOTH				0x1D01
+#define GL_COLOR_MATERIAL			0x0B57
+#define GL_COLOR_MATERIAL_FACE			0x0B55
+#define GL_COLOR_MATERIAL_PARAMETER		0x0B56
+#define GL_NORMALIZE				0x0BA1
+#endif
+
 #if !defined(RGL_MATRIX_TYPE)
 typedef struct RGL_MATRIX {
     float m[16];
@@ -130,7 +178,6 @@ typedef struct RGL_BATCH {
 extern "C" {            /* Prevents name mangling of functions */
 #endif
 
-
 RGLDEF void rglInit(int width,  i32 height, void* loader);             /* Initialize RGLinfo (buffers, shaders, textures, states) */
 RGLDEF void rglClose(void);                             /* De-initialize RGLinfo (buffers, shaders, textures) */
 RGLDEF void rglSetFramebufferSize(int width,    i32 height);            /* Set current framebuffer size */
@@ -140,6 +187,11 @@ RGLDEF void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoo
 
 RGLDEF void rglSetTexture(u32 id);               /* Set current texture for render batch and check buffers limits */
 RGLDEF u32 rglCreateTexture(u8* bitmap, u32 width, u32 height, u8 channels); /* create texture */
+
+/* RGL implementation of gluPerspective */
+RGLDEF void rglPerspective(double fovY, double aspect, double zNear, double zFar); /* set up a perspective projection matrix */
+/* Scale */
+RGLDEF RGL_MATRIX rglMatrixScale(float x, float y, float z);
 
 #if defined(RGL_OPENGL_LEGACY)
 #define rglBegin glBegin
@@ -471,10 +523,10 @@ void rglInit(int width, i32 height, void *loader) {
 
     RGLinfo.elementCount = RGL_MAX_BUFFER_ELEMENTS;
 
-    RGLinfo.vertices = (float *)RGL_MALLOC(RGL_MAX_BUFFER_ELEMENTS * 3 * 4 * sizeof(float));
-    RGLinfo.tcoords = (float *)RGL_MALLOC(RGL_MAX_BUFFER_ELEMENTS * 2 * 4 * sizeof(float));
-    RGLinfo.colors = (float*)RGL_MALLOC(RGL_MAX_BUFFER_ELEMENTS * 4 * 4 * sizeof(float));
-    RGLinfo.indices = (u16*)RGL_MALLOC(RGL_MAX_BUFFER_ELEMENTS * 6 * sizeof(u16));
+    RGLinfo.vertices = (float *)RGL_MALLOC(RGL_MAX_BUFFER_ELEMENTS * 3 * 4 * sizeof(float) * RGL_MAX_BATCHES);
+    RGLinfo.tcoords = (float *)RGL_MALLOC(RGL_MAX_BUFFER_ELEMENTS * 2 * 4 * sizeof(float) * RGL_MAX_BATCHES);
+    RGLinfo.colors = (float*)RGL_MALLOC(RGL_MAX_BUFFER_ELEMENTS * 4 * 4 * sizeof(float) * RGL_MAX_BATCHES);
+    RGLinfo.indices = (u16*)RGL_MALLOC(RGL_MAX_BUFFER_ELEMENTS * 6 * sizeof(u16) * RGL_MAX_BATCHES);
 
     i32 k = 0, j;
 
@@ -497,28 +549,24 @@ void rglInit(int width, i32 height, void *loader) {
 
     /* Quads - Vertex buffers binding and attributes enable */
     /* Vertex position buffer (shader-location = 0) */
-    glGenBuffers(1, &RGLinfo.vbo);
     glBindBuffer(GL_ARRAY_BUFFER, RGLinfo.vbo);
     glBufferData(GL_ARRAY_BUFFER, RGL_MAX_BUFFER_ELEMENTS * 3 * 4 * sizeof(float), RGLinfo.vertices, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, 0, 0, 0);
 
     /* Vertex texcoord buffer (shader-location = 1) */
-    glGenBuffers(1, &RGLinfo.tbo);
     glBindBuffer(GL_ARRAY_BUFFER, RGLinfo.tbo);
     glBufferData(GL_ARRAY_BUFFER, RGL_MAX_BUFFER_ELEMENTS * 2 * 4 * sizeof(float), RGLinfo.tcoords, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, 0, 0, 0);
 
     /* Vertex color buffer (shader-location = 3) */
-    glGenBuffers(1, &RGLinfo.cbo);
     glBindBuffer(GL_ARRAY_BUFFER, RGLinfo.cbo);
     glBufferData(GL_ARRAY_BUFFER, RGL_MAX_BUFFER_ELEMENTS * 4 * 4 * sizeof(float), RGLinfo.colors, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 4, GL_FLOAT, GL_TRUE, 0, 0);
 
     /* Fill index buffer */
-    glGenBuffers(1, &RGLinfo.ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, RGLinfo.ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, RGL_MAX_BUFFER_ELEMENTS * 6 * sizeof(u16), RGLinfo.indices, GL_STATIC_DRAW);
 
@@ -728,6 +776,30 @@ void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocat
     if (RGLinfo.currentBuffer >= RGLinfo.bufferCount) 
         RGLinfo.currentBuffer = 0;
 #endif
+}
+
+void rglPerspective(double fovY, double aspect, double zNear, double zFar) {
+    const double f = tan(fovY / 2.0);
+    float projectionMatrix[16] = {0};
+
+    projectionMatrix[0] = f / aspect;
+    projectionMatrix[5] = f;
+    projectionMatrix[10] = (zFar + zNear) / (zNear - zFar);
+    projectionMatrix[11] = -1.0;
+    projectionMatrix[14] = (2.0 * zFar * zNear) / (zNear - zFar);
+
+    rglMultMatrixf(projectionMatrix);
+}
+
+RGL_MATRIX rglMatrixScale(float x, float y, float z) {
+    RGL_MATRIX result = {{ 
+                        x, 0.0f, 0.0f, 0.0f,
+                        0.0f, y, 0.0f, 0.0f,
+                        0.0f, 0.0f, z, 0.0f,
+                        0.0f, 0.0f, 0.0f, 1.0f 
+                      }};
+
+    return result;
 }
 
 #if defined(RGL_MODERN_OPENGL)
