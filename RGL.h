@@ -347,6 +347,7 @@ RGL_INFO RGLinfo;
 
 void rglSetTexture(u32 id) {
 #if defined(RGL_OPENGL_LEGACY)
+    glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, id);
 #else
     RGLinfo.tex = id;
@@ -391,6 +392,7 @@ u32 rglCreateTexture(u8* bitmap, u32 width, u32 height, u8 channels) {
 }
 
 #ifdef RGL_DEBUG
+#include <stdio.h>
 
 void RGL_opengl_getError() {
 	GLenum err;
@@ -418,6 +420,7 @@ void RGL_opengl_getError() {
 	}
 }
 
+#ifdef RGL_MODERN_OPENGL
 void RGL_debug_shader(u32 src, const char *shader, const char *action) {
 	GLint status;
 	if (action[0] == 'l')
@@ -446,6 +449,7 @@ void RGL_debug_shader(u32 src, const char *shader, const char *action) {
 		exit(1);
 	}
 }
+#endif
 #endif /* RGL_DEBUG */
 
 #define RGL_MULTILINE_STR(...) #__VA_ARGS__
