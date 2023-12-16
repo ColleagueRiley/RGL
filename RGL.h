@@ -123,6 +123,10 @@ typedef u8 b8;
 #define GL_NICEST				0x1102
 #endif
 
+#ifndef GL_RG
+#define GL_RG 0x8227
+#endif
+
 #ifndef GL_SMOOTH
 #define GL_LIGHTING				0x0B50
 #define GL_LIGHT0				0x4000
