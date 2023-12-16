@@ -25,7 +25,7 @@ main:
 	gcc main.c $(LIBS) -I./ext -I../ -Wall -o main
 
 gl:
-	gcc main.c $(LIBS) -I./ext -I../ -Wall -D RGL_LEGACY_OPENGL -o gl
+	gcc main.c $(LIBS) -I./ext -I../ -Wall -D RGL_OPENGL_LEGACY -o gl
 
 clean:
 	rm main -f
@@ -34,7 +34,7 @@ debug:
 	make clean
 
 	gcc main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -o main
-	gcc main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -D RGL_LEGACY_OPENGL -o gl
+	gcc main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -D RGL_OPENGL_LEGACY -o gl
 
 	./main
 	./gl

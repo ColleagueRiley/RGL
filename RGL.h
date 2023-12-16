@@ -28,7 +28,7 @@ MACRO #DEFINE ARGUMENTS
 ***
 
 #define RGL_MODERN_OPENGL - Use the modern opengl backend (this is enabled by default)
-#define RGL_LEGACY_OPENGL - Use the legacy opengl backend
+#define RGL_OPENGL_LEGACY - Use the legacy opengl backend
 #define RGL_NO_X64_OPTIMIZATIONS - Use x64 optimizations (x64 only), eg. SIMD
 #define RGL_ALLOC_BATCHES - Allocate room for batches instead of using a stack-based c array
 #define RGL_ALLOC_MATRIX_STACK - Allocate room for the matrix stack instead of using a stack-based c array
@@ -449,7 +449,12 @@ void RGL_debug_shader(u32 src, const char *shader, const char *action) {
 /* Initialize RGLinfo: OpenGL extensions, default buffers/shaders/textures, OpenGL states*/
 void rglInit(int width, i32 height, void *loader) {
 #if defined(RGL_MODERN_OPENGL)
-    gladLoadGL((GLADloadfunc)loader);
+    int version = gladLoadGL((GLADloadfunc)loader);
+
+    if (version == 0) {
+        printf("Failed to load an OpenGL 3.3 Context\n");
+        exit(1);
+    }
 
     static const char *defaultVShaderCode = RGL_MULTILINE_STR(
         \x23version 330                    \n
