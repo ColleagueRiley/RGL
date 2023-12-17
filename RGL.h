@@ -218,7 +218,7 @@ RGLDEF RGL_MATRIX rglMatrixScale(float x, float y, float z);
 #define rglFrustum glFrustum
 #define rglMultMatrixf glMultMatrixf
 #define rglViewport glViewport
-#define rglLineWidth glLineWidt
+#define rglLineWidth glLineWidth
 #else
 
 RGLDEF void rglBegin(int mode);
