@@ -64,10 +64,10 @@ RLGL (raylib / Raysay5) - 	{UPDATE : Most of this code was actually based on or 
     #include <GL/gl.h>
 #endif
 
-#ifdef __WIN32
+#if defined(__WIN32) && !defined(__linux__)
 typedef char GLchar;
 typedef int	 GLsizei;
-typedef khronos_intptr_t GLintptr;
+typedef ptrdiff_t GLintptr;
 #endif
 
 #ifdef __APPLE__
