@@ -68,6 +68,7 @@ RLGL (raylib / Raysay5) - 	{UPDATE : Most of this code was actually based on or 
 typedef char GLchar;
 typedef int	 GLsizei;
 typedef ptrdiff_t GLintptr;
+typedef ptrdiff_t GLsizeiptr;
 #endif
 
 #ifdef __APPLE__
