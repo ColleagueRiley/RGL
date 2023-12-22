@@ -42,8 +42,8 @@ Values
 								 By Default this value is set to 8192
 #define RGL_MAX_MATRIX_STACK_SIZE <x> - Set the max number of matrix stack layers that can be active at a time
 										 By default this value is set to 32
-#define RGL_MALLOC <x> - set the malloc function for RGL and GLAD to use, by default this is the c standard malloc
-#define RGL_FREE <x> - set the free function for RGL and GLAD to use, by default this is the c standard free
+#define RGL_MALLOC <x> - set the malloc function for RGL, by default this is the c standard malloc
+#define RGL_FREE <x> - set the free function for RGL, by default this is the c standard free
 #define PI <x> - set the default value for PI used, by default this value is 3.14159265358979323846f
 #define DEG2RAD - set the default value for deg2rad used, by default this value is (PI / 180.0f)
 */
@@ -56,6 +56,13 @@ RLGL (raylib / Raysay5) - 	{UPDATE : Most of this code was actually based on or 
 									RLGL was also used as a reference for some of this code.
 								
 */
+
+#if defined(__APPLE__)
+    #include <OpenGL/gl.h>          /* OpenGL 1.1 library for OSX */
+    #include <OpenGL/glext.h>       /* OpenGL extensions library */
+#else
+    #include <GL/gl.h>
+#endif
 
 #ifdef __APPLE__
 #define RGLDEF extern inline
@@ -251,6 +258,88 @@ RGLDEF RGL_MATRIX rglMatrixMultiply(float left[16], float right[16]);  /* Multip
 
 RGLDEF i32 rglCheckRenderBatchLimit(int vCount);                             /* Check internal buffer overflow for a given number of vertex */
 
+#define RGL_PROC_DEF(proc, name) name = (name##PROC)proc(#name)
+
+typedef void (*RGLapiproc)(void);
+typedef RGLapiproc (*RGLloadfunc)(const char *name);
+
+typedef void (*glShaderSourcePROC) (GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
+typedef GLuint (*glCreateShaderPROC) (GLenum type);
+typedef void (*glCompileShaderPROC) (GLuint shader);
+typedef GLuint (*glCreateProgramPROC) (void);
+typedef void (*glAttachShaderPROC) (GLuint program, GLuint shader);
+typedef void (*glBindAttribLocationPROC) (GLuint program, GLuint index, const GLchar *name);
+typedef void (*glLinkProgramPROC) (GLuint program);
+typedef void (*glBindBufferPROC) (GLenum target, GLuint buffer);
+typedef void (*glBufferDataPROC) (GLenum target, GLsizeiptr size, const void *data, GLenum usage);
+typedef void (*glEnableVertexAttribArrayPROC) (GLuint index);
+typedef void (*glVertexAttribPointerPROC) (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
+typedef void (*glDisableVertexAttribArrayPROC) (GLuint index);
+typedef void (*glDeleteBuffersPROC) (GLsizei n, const GLuint *buffers);
+typedef void (*glDeleteVertexArraysPROC) (GLsizei n, const GLuint *arrays);
+typedef void (*glUseProgramPROC) (GLuint program);
+typedef void (*glDetachShaderPROC) (GLuint program, GLuint shader);
+typedef void (*glDeleteShaderPROC) (GLuint shader);
+typedef void (*glDeleteProgramPROC) (GLuint program);
+typedef void (*glDeleteTexturesPROC) (GLsizei n, const GLuint *textures);
+typedef void (*glViewportPROC) (GLint x, GLint y, GLsizei width, GLsizei height);
+typedef void (*glBufferSubDataPROC) (GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
+typedef void (*glActiveTexturePROC) (GLenum texture);
+typedef void (*glDrawArraysPROC) (GLenum mode, GLint first, GLsizei count);
+typedef void (*glDrawElementsPROC) (GLenum mode, GLsizei count, GLenum type, const void *indices);
+typedef void (*glGetShaderivPROC)(GLuint shader, GLenum pname, GLint *params);
+typedef void (*glGetShaderInfoLogPROC)(GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
+typedef void (*glGetProgramivPROC)(GLuint program, GLenum pname, GLint *params);
+typedef void (*glGetProgramInfoLogPROC)(GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
+typedef void (*glGenVertexArraysPROC)(GLsizei n, GLuint *arrays);
+typedef void (*glGenBuffersPROC)(GLsizei n, GLuint *buffers);
+typedef void (*glBindVertexArrayPROC)(GLuint array);
+typedef void (*glClearPROC)(GLbitfield mask);
+typedef GLint (*glGetUniformLocationPROC)(GLuint program, const GLchar *name);
+typedef void (*glUniformMatrix4fvPROC)(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+typedef void (*glBindTexturePROC)(GLenum target, GLuint texture);
+typedef void (*glPixelStoreiPROC)(GLenum pname, GLint param);
+typedef void (*glGenTexturesPROC)(GLsizei n, GLuint *textures);
+typedef void (*glTexParameteriPROC)(GLenum target, GLenum pname, GLint param);
+typedef void (*glTexImage2DPROC)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels);
+typedef const GLubyte *(*glGetStringPROC)(GLenum name);
+typedef void (*glClearColorPROC)(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
+
+glShaderSourcePROC glShaderSource = NULL;
+glCreateShaderPROC glCreateShader = NULL;
+glCompileShaderPROC glCompileShader = NULL;
+glCreateProgramPROC glCreateProgram = NULL;
+glAttachShaderPROC glAttachShader = NULL;
+glBindAttribLocationPROC glBindAttribLocation = NULL;
+glLinkProgramPROC glLinkProgram = NULL;
+glBindBufferPROC glBindBuffer = NULL;
+glBufferDataPROC glBufferData = NULL;
+glEnableVertexAttribArrayPROC glEnableVertexAttribArray = NULL;
+glVertexAttribPointerPROC glVertexAttribPointer = NULL;
+glDisableVertexAttribArrayPROC glDisableVertexAttribArray = NULL;
+glDeleteBuffersPROC glDeleteBuffers = NULL;
+glDeleteVertexArraysPROC glDeleteVertexArrays = NULL;
+glUseProgramPROC glUseProgram = NULL;
+glDetachShaderPROC glDetachShader = NULL;
+glDeleteShaderPROC glDeleteShader = NULL;
+glDeleteProgramPROC glDeleteProgram = NULL;
+glBufferSubDataPROC glBufferSubData = NULL;
+glGetShaderivPROC glGetShaderiv = NULL;
+glGetShaderInfoLogPROC glGetShaderInfoLog = NULL;
+glGetProgramivPROC glGetProgramiv = NULL;
+glGetProgramInfoLogPROC glGetProgramInfoLog = NULL;
+glGenVertexArraysPROC glGenVertexArrays = NULL;
+glGenBuffersPROC glGenBuffers = NULL;
+glBindVertexArrayPROC glBindVertexArray = NULL;
+glGetUniformLocationPROC glGetUniformLocation = NULL;
+glUniformMatrix4fvPROC glUniformMatrix4fv = NULL;
+
+glActiveTexturePROC glActiveTextureSRC = NULL;
+
+#define glActiveTexture glActiveTextureSRC
+
+extern int RGL_loadGL3(RGLloadfunc proc);
+
 #endif
 #if defined(__cplusplus)
 }
@@ -259,24 +348,6 @@ RGLDEF i32 rglCheckRenderBatchLimit(int vCount);                             /* 
 #endif /* RGL_H */
 
 #ifdef RGL_IMPLEMENTATION
-
-#if defined(RGL_OPENGL_LEGACY)
-    #if defined(__APPLE__)
-        #include <OpenGL/gl.h>          /* OpenGL 1.1 library for OSX */
-        #include <OpenGL/glext.h>       /* OpenGL extensions library */
-    #else
-        #include <GL/gl.h>
-    #endif
-#endif
-
-#if defined(RGL_MODERN_OPENGL)
-    #define GLAD_MALLOC RGL_MALLOC
-    #define GLAD_FREE RGL_FREE
-
-    #define GLAD_GL_IMPLEMENTATION
-    #include "glad.h"      /* GLAD extensions loading library, includes OpenGL headers */
-#endif
-
 #include <math.h>                       /* Required for: sqrtf(), sinf(), cosf(), floor(), log() */
 
 /* Defines and Macros */
@@ -457,10 +528,10 @@ void RGL_debug_shader(u32 src, const char *shader, const char *action) {
 /* Initialize RGLinfo: OpenGL extensions, default buffers/shaders/textures, OpenGL states*/
 void rglInit(int width, i32 height, void *loader) {
 #if defined(RGL_MODERN_OPENGL)
-    int version = gladLoadGL((GLADloadfunc)loader);
-
-    if (version == 0) {
+    if (RGL_loadGL3((RGLloadfunc)loader)) {
+        #ifdef RGL_DEBUG
         printf("Failed to load an OpenGL 3.3 Context\n");
+        #endif
         exit(1);
     }
 
@@ -1078,6 +1149,44 @@ RGL_MATRIX rglMatrixMultiply(float left[16], float right[16]) {
             left[12] * right[3] + left[13] * right[7] + left[14] * right[11] + left[15] * right[15]
         }
     };
+}
+
+int RGL_loadGL3(RGLloadfunc proc) {
+    RGL_PROC_DEF(proc, glShaderSource);
+    RGL_PROC_DEF(proc, glCreateShader);
+    RGL_PROC_DEF(proc, glCompileShader);
+    RGL_PROC_DEF(proc, glCreateProgram);
+    RGL_PROC_DEF(proc, glAttachShader);
+    RGL_PROC_DEF(proc, glBindAttribLocation);
+    RGL_PROC_DEF(proc, glLinkProgram);
+    RGL_PROC_DEF(proc, glBindBuffer);
+    RGL_PROC_DEF(proc, glBufferData);
+    RGL_PROC_DEF(proc, glEnableVertexAttribArray);
+    RGL_PROC_DEF(proc, glVertexAttribPointer);
+    RGL_PROC_DEF(proc, glDisableVertexAttribArray);
+    RGL_PROC_DEF(proc, glDeleteBuffers);
+    RGL_PROC_DEF(proc, glDeleteVertexArrays);
+    RGL_PROC_DEF(proc, glUseProgram);
+    RGL_PROC_DEF(proc, glDetachShader);
+    RGL_PROC_DEF(proc, glDeleteShader);
+    RGL_PROC_DEF(proc, glDeleteProgram);
+    RGL_PROC_DEF(proc, glBufferSubData);
+    RGL_PROC_DEF(proc, glGetShaderiv);
+    RGL_PROC_DEF(proc, glGetShaderInfoLog);
+    RGL_PROC_DEF(proc, glGetProgramiv);
+    RGL_PROC_DEF(proc, glGetProgramInfoLog);
+    RGL_PROC_DEF(proc, glGenVertexArrays);
+    RGL_PROC_DEF(proc, glGenBuffers);
+    RGL_PROC_DEF(proc, glBindVertexArray);
+    RGL_PROC_DEF(proc, glGetUniformLocation);
+    RGL_PROC_DEF(proc, glUniformMatrix4fv);
+
+    glActiveTexture = (glActiveTexturePROC)proc("glActiveTexture");
+
+    if (glShaderSource == NULL)
+        return 1;
+
+    return 0;
 }
 
 #endif /* RGL_MODERN_OPENGL */
