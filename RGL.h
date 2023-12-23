@@ -64,7 +64,7 @@ RLGL (raylib / Raysay5) - 	{UPDATE : Most of this code was actually based on or 
     #include <GL/gl.h>
 #endif
 
-#if defined(__WIN32) && !defined(__linux__)
+#if defined(__WIN32) && !defined(__linux__) && !defined(GL_VERTEX_SHADER)
 typedef char GLchar;
 typedef int	 GLsizei;
 typedef ptrdiff_t GLintptr;
@@ -218,6 +218,9 @@ RGLDEF u32 rglCreateTexture(u8* bitmap, u32 width, u32 height, u8 channels); /* 
 RGLDEF void rglPerspective(double fovY, double aspect, double zNear, double zFar); /* set up a perspective projection matrix */
 /* Scale */
 RGLDEF RGL_MATRIX rglMatrixScale(float x, float y, float z);
+
+/* render with legacy (or turn of legacy rendering if you turned it on) */
+RGLDEF void rglLegacy(u8 state);
 
 #if defined(RGL_OPENGL_LEGACY)
 #define rglBegin glBegin
@@ -442,16 +445,24 @@ typedef struct RGL_INFO {
     #endif
 
     u32 vao, vbo, tbo, cbo, ebo; /* array object and array buffers */
+
+    u8 legacy;
 } RGL_INFO;
 
 RGL_INFO RGLinfo;
 #endif /* RGL_MODERN_OPENGL */
 
 void rglSetTexture(u32 id) {
-#if defined(RGL_OPENGL_LEGACY)
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, id);
-#else
+    #if defined(RGL_MODERN_OPENGL)
+    if (RGLinfo.legacy) 
+    #endif
+    {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, id);
+
+        return;
+    }
+#if defined(RGL_MODERN_OPENGL)
     RGLinfo.tex = id;
 
     if (id == 0)
@@ -523,6 +534,13 @@ void RGL_opengl_getError() {
 }
 
 #ifdef RGL_MODERN_OPENGL
+
+#ifndef GL_LINK_STATUS
+#define GL_LINK_STATUS 0x8B82
+#define GL_COMPILE_STATUS 0x8B81
+#define GL_INFO_LOG_LENGTH 0x8B84
+#endif
+
 void RGL_debug_shader(u32 src, const char *shader, const char *action) {
 	GLint status;
 	if (action[0] == 'l')
@@ -561,10 +579,14 @@ void rglInit(int width, i32 height, void *loader) {
 #if defined(RGL_MODERN_OPENGL)
     if (RGL_loadGL3((RGLloadfunc)loader)) {
         #ifdef RGL_DEBUG
-        printf("Failed to load an OpenGL 3.3 Context\n");
+        printf("Failed to load an OpenGL 3.3 Context, reverting to OpenGL Legacy\n");
         #endif
-        exit(1);
+
+        RGLinfo.legacy = 1;   
+        return;
     }
+
+    RGLinfo.legacy = 0; 
 
     static const char *defaultVShaderCode = RGL_MULTILINE_STR(
         \x23version 330                    \n
@@ -731,6 +753,9 @@ void rglInit(int width, i32 height, void *loader) {
 /* Vertex Buffer Object deinitialization (memory free) */
 void rglClose(void) {
 #if defined(RGL_MODERN_OPENGL)
+    if (RGLinfo.legacy)
+        return;
+    
     /* Unbind everything */
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -790,12 +815,18 @@ void rglSetFramebufferSize(int width,   i32 height) {
 
 void rglRenderBatch() {
     #if defined(RGL_MODERN_OPENGL)
+    if (RGLinfo.legacy)
+        return;
+    
     rglRenderBatchWithShader(RGLinfo.program, 0, 1, 2);
     #endif
 }
 
 void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocation, u32 colorLocation) {
 #if defined(RGL_MODERN_OPENGL)
+    if (RGLinfo.legacy)
+        return;
+
     if (RGLinfo.vertexCounter > 0) {
         glBindVertexArray(RGLinfo.vao);
 
@@ -842,16 +873,14 @@ void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocat
 
         u32 vertexOffset;
         u32 i;
-
+        
         for (i = 0, vertexOffset = 0; i < RGLinfo.drawCounter; i++) {
             /* Bind current draw call texture, activated as GL_TEXTURE0 and Bound to sampler2D texture0 by default */
             glBindTexture(GL_TEXTURE_2D, RGLinfo.batches[i].tex);
-
             #ifdef RGL_EBO
             if ((RGLinfo.batches[i].mode == RGL_LINES) || (RGLinfo.batches[i].mode == RGL_TRIANGLES)) 
             #endif
                 glDrawArrays(RGLinfo.batches[i].mode, vertexOffset, RGLinfo.batches[i].vertexCount);
-            
             #ifdef RGL_EBO
             else
                 glDrawElements(GL_TRIANGLES, RGLinfo.batches[i].vertexCount / 4 * 6, GL_UNSIGNED_SHORT, (GLvoid *)(vertexOffset / 4 * 6 * sizeof(GLushort)));
@@ -917,11 +946,20 @@ RGL_MATRIX rglMatrixScale(float x, float y, float z) {
     return result;
 }
 
+void rglLegacy(u8 state) {
+    #if defined(RGL_MODERN_OPENGL)
+    RGLinfo.legacy = state;
+    #endif
+}
+
 #if defined(RGL_MODERN_OPENGL)
 
 /* Check internal buffer overflow for a given number of vertex */
 /* and force a void draw call if required */
 int rglCheckRenderBatchLimit(int vCount) {
+    if (RGLinfo.legacy)
+        return 0;
+
     if ((RGLinfo.vertexCounter + vCount) < (RGLinfo.elementCount*4))
         return 0;
 
@@ -939,8 +977,11 @@ int rglCheckRenderBatchLimit(int vCount) {
 
 /* Initialize drawing mode (how to organize vertex) */
 void rglBegin(int mode) {
-    if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode != mode && 
-        RGLinfo.batches[RGLinfo.drawCounter - 1].tex != RGLinfo.tex &&
+    if (RGLinfo.legacy)
+        return glBegin(mode);
+    
+    if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode != mode ||
+        RGLinfo.batches[RGLinfo.drawCounter - 1].tex != RGLinfo.tex ||
         RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount > 0) {
             if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES) 
                 RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment = ((RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount < 4)? RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount : RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%4);
@@ -964,11 +1005,15 @@ void rglBegin(int mode) {
 }
 
 void rglEnd(void) {
-
+    if (RGLinfo.legacy)
+        return glEnd();
 }
 
 /* Define one vertex (texture coordinate) */
 void rglTexCoord2f(float x, float y) {
+    if (RGLinfo.legacy)
+        return glTexCoord2f(x, y);
+
     RGLinfo.tcoord[0] = x;
     RGLinfo.tcoord[1] = y;
 }
@@ -987,6 +1032,9 @@ void rglColor3f(float r, float g, float b) {
 }
 
 void rglColor4f(float r, float g, float b, float a) {
+    if (RGLinfo.legacy)
+        return glColor4f(r, g, b, a);
+
     RGLinfo.color[0] = r;
     RGLinfo.color[1] = g;
     RGLinfo.color[2] = b;
@@ -999,6 +1047,9 @@ void rglVertex2f(float x, float y) {
 }
 
 void rglVertex3f(float x, float y, float z) {
+    if (RGLinfo.legacy)
+        return glVertex3f(x, y, z);
+
     float tx = x;
     float ty = y;
     float tz = z;
@@ -1041,6 +1092,9 @@ void rglVertex3f(float x, float y, float z) {
 
 /* Multiply the current matrix by a translation matrix */
 void rglTranslatef(float x, float y, float z) {
+    if (RGLinfo.legacy)
+        return glTranslatef(x, y, z);
+
     RGL_MATRIX matTranslation = { 
         {
             1.0f, 0.0f, 0.0f, 0.0f,
@@ -1056,6 +1110,10 @@ void rglTranslatef(float x, float y, float z) {
 
 /* Multiply the current matrix by a rotation matrix */
 void rglRotatef(float angle, float x, float y, float z) {
+    if (RGLinfo.legacy) {
+        return glRotatef(angle, x, y, z);
+    }
+
 	/* Axis vector (x, y, z) normalization */
 	float lengthSquared = x * x + y * y + z * z;
 	if ((lengthSquared != 1.0f) && (lengthSquared != 0.0f)) {
@@ -1083,6 +1141,10 @@ void rglRotatef(float angle, float x, float y, float z) {
 
 /* Multiply the current matrix by an orthographic matrix generated by parameters */
 void rglOrtho(double left, double right, double bottom, double top, double znear, double zfar) {
+    if (RGLinfo.legacy) {
+        return glOrtho(left, right, bottom, top, znear, zfar);
+    }
+
 	float rl = (float)(right - left);
 	float tb = (float)(top - bottom);
 	float fn = (float)(zfar - znear);
@@ -1104,6 +1166,10 @@ void rglOrtho(double left, double right, double bottom, double top, double znear
 
 /* Choose the current matrix to be transformed */
 void rglMatrixMode(int mode) {
+    if (RGLinfo.legacy) {
+        return glMatrixMode(mode);
+    }
+
 	RGLinfo.matrixMode = mode;
 
 	if (mode == RGL_MODELVIEW)
@@ -1114,6 +1180,9 @@ void rglMatrixMode(int mode) {
 
 /* Push the current matrix into RGLinfo.stack */
 void rglPushMatrix(void) {
+    if (RGLinfo.legacy)
+        return glPushMatrix();
+    
     RGLinfo.stack[RGLinfo.stackCounter] = *RGLinfo.matrix;
 
     if (RGLinfo.matrixMode == RGL_MODELVIEW) {
@@ -1126,6 +1195,9 @@ void rglPushMatrix(void) {
 
 /* Pop lattest inserted matrix from RGLinfo.stack */
 void rglPopMatrix(void) {
+    if (RGLinfo.legacy)
+        return glPopMatrix();
+
     if (RGLinfo.stackCounter > 0) {
         RGL_MATRIX mat = RGLinfo.stack[RGLinfo.stackCounter - 1];
         *RGLinfo.matrix = mat;
@@ -1140,6 +1212,9 @@ void rglPopMatrix(void) {
 
 /* Reset current matrix to identity matrix */
 void rglLoadIdentity(void) {
+    if (RGLinfo.legacy)
+        return glLoadIdentity();
+    
     *RGLinfo.matrix = rglMatrixIdentity();
 }
 
@@ -1156,6 +1231,10 @@ RGL_MATRIX rglMatrixIdentity(void) {
 }
 
 void rglMultMatrixf(const float* m) {
+    if (RGLinfo.legacy) {
+        return glMultMatrixf(m);
+    }
+
 	*RGLinfo.matrix = rglMatrixMultiply(RGLinfo.matrix->m, (float*)m);
 }
 
@@ -1211,12 +1290,40 @@ int RGL_loadGL3(RGLloadfunc proc) {
     RGL_PROC_DEF(proc, glBindVertexArray);
     RGL_PROC_DEF(proc, glGetUniformLocation);
     RGL_PROC_DEF(proc, glUniformMatrix4fv);
-
     RGL_PROC_DEF(proc, glActiveTexture);
 
-    if (glShaderSource == NULL)
+    if (
+        glShaderSourceSRC == NULL ||
+        glCreateShaderSRC == NULL ||
+        glCompileShaderSRC == NULL ||
+        glCreateProgramSRC == NULL ||
+        glAttachShaderSRC == NULL ||
+        glBindAttribLocationSRC == NULL ||
+        glLinkProgramSRC == NULL ||
+        glBindBufferSRC == NULL ||
+        glBufferDataSRC == NULL ||
+        glEnableVertexAttribArraySRC == NULL ||
+        glVertexAttribPointerSRC == NULL ||
+        glDisableVertexAttribArraySRC == NULL ||
+        glDeleteBuffersSRC == NULL ||
+        glDeleteVertexArraysSRC == NULL ||
+        glUseProgramSRC == NULL ||
+        glDetachShaderSRC == NULL ||
+        glDeleteShaderSRC == NULL ||
+        glDeleteProgramSRC == NULL ||
+        glBufferSubDataSRC == NULL ||
+        glGetShaderivSRC == NULL ||
+        glGetShaderInfoLogSRC == NULL ||
+        glGetProgramivSRC == NULL ||
+        glGetProgramInfoLogSRC == NULL ||
+        glGenVertexArraysSRC == NULL ||
+        glGenBuffersSRC == NULL ||
+        glBindVertexArraySRC == NULL ||
+        glGetUniformLocationSRC == NULL ||
+        glUniformMatrix4fvSRC == NULL
+    )
         return 1;
-
+    
     return 0;
 }
 
