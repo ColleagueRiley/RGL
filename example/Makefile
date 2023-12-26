@@ -1,3 +1,10 @@
+CC = gcc
+
+LIBS := -lopengl32 -lshell32 -lgdi32 -lm
+
+ifneq (,$(filter $(CC),x86_64-w64-mingw32-gcc))
+    detected_OS := Windows
+else
 ifeq '$(findstring ;,$(PATH))' ';'
     detected_OS := Windows
 else
@@ -5,6 +12,7 @@ else
     detected_OS := $(patsubst CYGWIN%,Cygwin,$(detected_OS))
     detected_OS := $(patsubst MSYS%,MSYS,$(detected_OS))
     detected_OS := $(patsubst MINGW%,MSYS,$(detected_OS))
+endif
 endif
 
 ifeq ($(detected_OS),Windows)
@@ -14,7 +22,7 @@ ifeq ($(detected_OS),Darwin)        # Mac OS X
 	LIBS := -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo -w
 endif
 ifeq ($(detected_OS),Linux)
-    LIBS := -I./include -lX11 -lGLX -lm -lGL
+    LIBS := -I./include -lX11 -lm -lGL
 endif
 
 all:
@@ -22,10 +30,10 @@ all:
 	make gl
 
 main:
-	gcc main.c $(LIBS) -I./ext -I../ -Wall -o main
+	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -o main
 
 gl:
-	gcc main.c $(LIBS) -I./ext -I../ -Wall -D RGL_OPENGL_LEGACY -o gl
+	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_OPENGL_LEGACY -o gl
 
 clean:
 	rm main -f
@@ -33,8 +41,8 @@ clean:
 debug:
 	make clean
 
-	gcc main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -o main
-	gcc main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -D RGL_OPENGL_LEGACY -o gl
+	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -o main
+	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -D RGL_OPENGL_LEGACY -o gl
 
 	./main
 	./gl

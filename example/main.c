@@ -1,3 +1,4 @@
+#define RGFW_WGL_NO_STENCIL
 #define RGL_IMPLEMENTATION
 #define RGFW_IMPLEMENTATION
 #define RGFW_PRINT_ERRORS
@@ -15,40 +16,12 @@
 
 #include <stdbool.h>
 
-unsigned int loadTexture(const void *data, int width, int height, unsigned char channels) {
-    unsigned int id = 0;
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glGenTextures(1, &id);
-    glBindTexture(GL_TEXTURE_2D, id);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
-    
-    unsigned int c;
-
-    switch (channels) {
-        case 1: c = GL_RED; break;
-        case 2: c = GL_RG; break;
-        case 3: c = GL_RGB; break;
-        case 4: c = GL_RGBA; break;
-        default: break;
-    }
-
-    glTexImage2D(GL_TEXTURE_2D, 0, c, width, height, 0, c, GL_UNSIGNED_BYTE, (unsigned char *)data);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    return id;
-}
+//#include "../draw.c"
 
 typedef struct { int x, y, w, h; } rect;
 typedef struct { int r, g, b, a; } color;
 
-float rotate[3] = {120, 0, 0};
+float rotate[3] = {0, 0, 0};
 
 void glPrerequisites(rect r, color c) {
     int width = 500, height = 500;
@@ -62,7 +35,6 @@ void glPrerequisites(rect r, color c) {
     rglPushMatrix();
 
     rglOrtho(0, width, height, 0, -width, width);
-
     
     rglTranslatef((r.x + (r.w / 2)), (r.x + (r.h / 2)), 0);
     rglRotatef(rotate[0],  0, 0, 1);
@@ -74,24 +46,31 @@ void glPrerequisites(rect r, color c) {
 
 int main() {
     RGFW_setGLVersion(3, 3);
-    RGFW_window* win = RGFW_createWindow("RGFW Example Window", 500, 500, 500, 500, RGFW_ALLOW_DND);
+    RGFW_window* win = RGFW_createWindow("RGL Example Window", 500, 500, 500, 500, 0);
+
     RGFW_window_makeCurrent(win);
-    
+
     rglInit(500, 500, RGFW_getProcAddress);
-    
+
     int w, h, c;
     u8* data = stbi_load("RSGL.png", &w, &h, &c, 0);
 
-    u32 tex = loadTexture(data, w, h, c);
+    u32 tex = rglCreateTexture(data, w, h, c);
     free(data);
 
     data = stbi_load("RGFW.png", &w, &h, &c, 0);
 
-    u32 tex2 = loadTexture(data, w, h, c);
+    u32 tex2 = rglCreateTexture(data, w, h, c);
     free(data);
 
     bool running = true;
+    
+    //u32* size = RGFW_window_screenSize(win);
+    //loat scaleRatio = (float)win->w/(float)size[0];
 
+    RGL_MATRIX screenScale = //rglMatrixScale(scaleRatio, scaleRatio, 1.0f);
+    rglMatrixScale((float)win->w /(float)win->w, (float)win-> h / (float)win-> h, 1.0f);
+    
     while (running) {  
         while(RGFW_window_checkEvent(win)) {   
             if (win->event.type == RGFW_quit) {
@@ -99,22 +78,39 @@ int main() {
                 break;
             }
         }
+        
 
         glClearColor(255, 255, 255, 255);
         glClear(GL_COLOR_BUFFER_BIT);
         
-        rglSetTexture(tex);
+        rglLegacy(1);
         
-        rglBegin(GL_QUADS);
-            rglColor3f(1, 0, 0); rglVertex2f(-0.6, -0.75);
-            rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
-            rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
-            rglColor3f(0, 0, 1); rglVertex2f(0, 0.75);
+        rglBegin(RGL_LINES);
+            rglColor3f(0, 1, 0); 
+            rglVertex2f(0.6, -0.75);
+            rglVertex2f(-0.6, -0.75);
+        rglEnd();
+        
+        rglLegacy(0);
+
+        rglBegin(RGL_LINES);
+            rglColor3f(0, 1, 0); 
+            rglVertex2f(0.6, 0.75);
+            rglVertex2f(-0.6, 0.75);
         rglEnd();
 
+        rglSetTexture(tex2);
+        
+        rglBegin(GL_QUADS);
+            rglTexCoord2f(0, 0); rglColor3f(1, 0, 0); rglVertex2f(-0.6, -0.75);
+            rglTexCoord2f(1, 0); rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
+            rglTexCoord2f(1, 0); rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
+            rglTexCoord2f(1, 1); rglColor3f(0, 0, 1); rglVertex2f(0, 0.75);
+        rglEnd();
 
         glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
-        rglSetTexture(tex2);
+
+        rglSetTexture(tex);
         rglBegin(GL_QUADS);
         rglTexCoord2f(0, 0);
         rglColor4f(1, 0, 0, 1); 
@@ -133,10 +129,18 @@ int main() {
         rglVertex3f(250, 400, 0);
         rglEnd();
         
+
         rglPopMatrix();
         rglPopMatrix();
 
+        rglLoadIdentity();
+
+        rglMultMatrixf(screenScale.m);
+
+
         rglRenderBatch();
+        
+        rglMultMatrixf(screenScale.m);
         RGFW_window_swapBuffers(win);
     }
 
