@@ -110,24 +110,27 @@ int main() {
 
         glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
 
-        rglSetTexture(tex);
-        rglBegin(GL_QUADS);
-        rglTexCoord2f(0, 0);
-        rglColor4f(1, 0, 0, 1); 
-        rglVertex3f(300, 300, 0);
-        
-        rglTexCoord2f(1, 0);
-        rglColor4f(0, 1, 0, 1); 
-        rglVertex3f(400, 300, 0);
-        
-        rglTexCoord2f(1, 0);
-        rglColor4f(0, 1, 0, 1); 
-        rglVertex3f(400, 300, 0);
-        
-        rglTexCoord2f(0.5f, 1);
-        rglColor4f(0, 0, 1, 1); 
-        rglVertex3f(250, 400, 0);
-        rglEnd();
+        size_t i;
+        for (i = 0; i < 2000; i++) {
+            rglSetTexture(tex);
+            rglBegin(GL_QUADS);
+            rglTexCoord2f(0, 0);
+            rglColor4f(1, 0, 0, 1); 
+            rglVertex3f(300, 300, 0);
+            
+            rglTexCoord2f(1, 0);
+            rglColor4f(0, 1, 0, 1); 
+            rglVertex3f(400, 300, 0);
+            
+            rglTexCoord2f(1, 0);
+            rglColor4f(0, 1, 0, 1); 
+            rglVertex3f(400, 300, 0);
+            
+            rglTexCoord2f(0.5f, 1);
+            rglColor4f(0, 0, 1, 1); 
+            rglVertex3f(250, 400, 0);
+            rglEnd();
+        }
         
 
         rglPopMatrix();

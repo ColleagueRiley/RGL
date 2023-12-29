@@ -60,7 +60,6 @@
 			Copyright (c) 2006-2019 Camilla Löwy
 */
 
-#define GL_SILENCE_DEPRECATION
 #ifndef RGFW_MALLOC
 #include <stdlib.h>
 #include <time.h>
@@ -2927,6 +2926,7 @@ void RGFW_setThreadPriority(RGFW_thread thread, u8 priority) { SetThreadPriority
 #endif
 
 #if defined(__APPLE__) && !defined(RGFW_MACOS_X11)
+#define GL_SILENCE_DEPRECATION
 #define SILICON_IMPLEMENTATION
 #include "silicon.h"
 #include <OpenGL/gl.h>
