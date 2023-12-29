@@ -60,6 +60,7 @@
 			Copyright (c) 2006-2019 Camilla Löwy
 */
 
+#define GL_SILENCE_DEPRECATION
 #ifndef RGFW_MALLOC
 #include <stdlib.h>
 #include <time.h>
@@ -985,8 +986,8 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 	}
 
 	if (RGFW_CENTER & args) {
-		x = (screenR[0] - w) / 1.1;
-		y = (screenR[1] - h) / 4;
+		x = (screenR[0] - w) / 2;
+		y = (screenR[1] - h) / 2;
 	}
 
 	/* set and init the new window's data */
@@ -1211,8 +1212,8 @@ u32* RGFW_window_screenSize(RGFW_window* win) {
 
 	Screen* scrn = DefaultScreenOfDisplay((Display*)win->display);
 
-	RGFWScreen[0] = scrn->height;
-	RGFWScreen[1] = scrn->width;
+	RGFWScreen[0] = scrn->width;
+	RGFWScreen[1] = scrn->height;
 
 	return RGFWScreen;
 }
@@ -2211,7 +2212,6 @@ wglChoosePixelFormatARB_type *wglChoosePixelFormatARB;
 #define WGL_PIXEL_TYPE_ARB                        0x2013
 #define WGL_COLOR_BITS_ARB                        0x2014
 #define WGL_DEPTH_BITS_ARB                        0x2022
-#define WGL_STENCIL_BITS_ARB                      0x2023
 #define WGL_FULL_ACCELERATION_ARB                 0x2027
 #define WGL_TYPE_RGBA_ARB                         0x202B
 #define WGL_CONTEXT_FLAGS_ARB                   0x2094
@@ -2283,8 +2283,8 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 	}
 
 	if (RGFW_CENTER & args) {
-		x = (r[0] - w) / 1.1;
-		y = (r[1] - h) / 4;
+		x = (r[0] - w) / 2;
+		y = (r[1] - h) / 2;
 	}
 
 	#ifndef RGFW_RECT
@@ -2312,15 +2312,15 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
     RegisterClassA(&Class);
 
 	DWORD window_style = 0; 
-	window_style = WS_MAXIMIZEBOX | WS_MINIMIZEBOX | window_style;
 
-	if (!(RGFW_NO_BORDER & args))
-		window_style |= WS_CAPTION | WS_SYSMENU | WS_BORDER;
+	if (!(RGFW_NO_BORDER & args)) {
+		window_style |= WS_CAPTION | WS_SYSMENU | WS_BORDER | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
+		
+		if (!(RGFW_NO_RESIZE & args))
+			window_style |= WS_SIZEBOX;
+	}
 	else
 		window_style |= WS_POPUP | WS_VISIBLE;
-
-	if (!(RGFW_NO_RESIZE & args))
-		window_style |= WS_SIZEBOX;
 
     win->display = CreateWindowA( Class.lpszClassName, name, window_style, x, y, w, h, 0, 0, inh, 0);
 
@@ -2391,17 +2391,17 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
                 SET_ATTRIB(WGL_CONTEXT_MINOR_VERSION_ARB, RGFW_minorVersion);
             }
 
-			#ifndef RGFW_WGL_NO_STENCIL
-			SET_ATTRIB(WGL_STENCIL_BITS_ARB, 8);
-			#endif
-
             SET_ATTRIB(0, 0);
 
             win->glWin = wglCreateContextAttribsARB(win->window, NULL, attribs);
         }
-        else
-            win->glWin = wglCreateContext(win->window);
-    }
+        else {
+			printf("Failed to create an accelerated OpenGL Context\n");
+		    win->glWin = wglCreateContext(win->window);
+		}
+	}
+	else 
+		printf("Failed to create an accelerated OpenGL Context\n");
 	#endif
 
 
@@ -2526,8 +2526,10 @@ RGFW_Event* RGFW_window_checkEvent(RGFW_window* win) {
 			case WM_MOUSEMOVE:
 				#ifndef RGFW_RECT
 				win->event.x = msg.pt.x - win->x;
+				win->event.y = msg.pt.y - win->y;
 				#else
 				win->event.x = msg.pt.x - win->r.x;
+				win->event.y = msg.pt.y - win->r.y;
 				#endif
 
 				win->event.type = RGFW_mousePosChanged;
@@ -2926,7 +2928,6 @@ void RGFW_setThreadPriority(RGFW_thread thread, u8 priority) { SetThreadPriority
 #endif
 
 #if defined(__APPLE__) && !defined(RGFW_MACOS_X11)
-#define GL_SILENCE_DEPRECATION
 #define SILICON_IMPLEMENTATION
 #include "silicon.h"
 #include <OpenGL/gl.h>
@@ -3052,8 +3053,8 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 	}
 
 	if (RGFW_CENTER & args) {
-		x = (r[0] - w) / 4;
-		y = (r[1] - h) / 4;
+		x = (r[0] - w) / 2;
+		y = (r[1] - h) / 2;
 	}
 
 	#ifndef RGFW_RECT
