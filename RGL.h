@@ -116,7 +116,7 @@ typedef u8 b8;
 #endif
 
 #ifndef RGL_MAX_BATCHES
-#define RGL_MAX_BATCHES 256
+#define RGL_MAX_BATCHES 1028
 #endif
 
 #ifndef RGL_MAX_BUFFER_ELEMENTS
@@ -442,12 +442,8 @@ typedef struct RGL_INFO {
     i32 currentBuffer;          /* Current buffer tracking in case of multi-buffering */
     i32 drawCounter;            /* Draw calls counter */
 
-    #ifdef RGL_ALLOC_BATCHES
     RGL_BATCH* batches;          /* Draw calls array, depends on tex */
-    #else
-    RGL_BATCH batches[RGL_MAX_BATCHES];
-    #endif
-
+    
     u32 vao, vbo, tbo, cbo, ebo; /* array object and array buffers */
 
     u8 legacy;
@@ -467,6 +463,9 @@ void rglSetTexture(u32 id) {
         return;
     }
 #if defined(RGL_MODERN_OPENGL)
+    if (RGLinfo.tex == id)
+        return;
+
     RGLinfo.tex = id;
 
     if (id == 0)
@@ -720,9 +719,7 @@ void rglInit(int width, i32 height, void *loader) {
     RGLinfo.defaultTex = rglCreateTexture(white, 1, 1, 4);
     RGLinfo.tex = RGLinfo.defaultTex;
 
-    #ifdef RGL_ALLOC_BATCHES
     RGLinfo.batches = (RGL_BATCH *)RGL_MALLOC(RGL_MAX_BATCHES * sizeof(RGL_BATCH));
-    #endif
     
     #ifdef RGL_ALLOC_MATRIX_STACK
     RGLinfo.statck = (RGL_MATRIX*)RGL_MALLOC(RGL_MAX_MATRIX_STACK_SIZE * sizeof(RGL_MATRIX));
@@ -988,6 +985,7 @@ void rglBegin(int mode) {
     if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode != mode ||
         RGLinfo.batches[RGLinfo.drawCounter - 1].tex != RGLinfo.tex ||
         RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount > 0) {
+            printf("h\n");
             if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES) 
                 RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment = ((RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount < 4)? RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount : RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%4);
             else if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_TRIANGLES) 
