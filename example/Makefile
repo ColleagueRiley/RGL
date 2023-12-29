@@ -1,8 +1,9 @@
+NAME = main
 CC = gcc
 
-LIBS := -lopengl32 -lshell32 -lgdi32 -lm
+LIBS := -lopengl32 -lshell32 -lgdi32 -lm --static
 
-ifneq (,$(filter $(CC),x86_64-w64-mingw32-gcc))
+ifneq (,$(filter $(CC),winegcc x86_64-w64-mingw32-gcc))
     detected_OS := Windows
 else
 ifeq '$(findstring ;,$(PATH))' ';'
@@ -15,34 +16,38 @@ else
 endif
 endif
 
+OUTPUT = $(NAME).exe
+
 ifeq ($(detected_OS),Windows)
-	LIBS := -lopengl32 -lshell32 -lgdi32 -lm
+	LIBS := -lopengl32 -lshell32 -lgdi32 -lm --static
 endif
 ifeq ($(detected_OS),Darwin)        # Mac OS X
-	LIBS := -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo -w
+	LIBS := -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
+	OUTPUT = $(NAME)
 endif
 ifeq ($(detected_OS),Linux)
-    LIBS := -I./include -lX11 -lm -lGL
+    LIBS := -I./include -lX11 -lGL -lm 
+	OUTPUT = $(NAME)
 endif
 
 all:
-	make main
-	make gl
+	make $(OUTPUT)
+	make gl-$(OUTPUT)
 
-main:
-	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -o main
+$(OUTPUT):
+	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -o $(OUTPUT)
 
-gl:
-	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_OPENGL_LEGACY -o gl
+gl-$(OUTPUT):
+	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_OPENGL_LEGACY -o gl-$(OUTPUT)
 
 clean:
-	rm main -f
+	rm $(OUTPUT) gl-$(OUTPUT) $(NAME) gl-$(OUTPUT) -f
 
 debug:
 	make clean
 
-	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -o main
-	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -D RGL_OPENGL_LEGACY -o gl
+	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -o $(OUTPUT)
+	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -D RGL_OPENGL_LEGACY -o gl-$(OUTPUT)
 
-	./main
-	./gl
+	./$(OUTPUT)
+	./gl-$(OUTPUT)

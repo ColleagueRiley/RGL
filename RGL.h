@@ -206,7 +206,7 @@ extern "C" {            /* Prevents name mangling of functions */
 
 RGLDEF void rglInit(int width,  i32 height, void* loader);             /* Initialize RGLinfo (buffers, shaders, textures, states) */
 RGLDEF void rglClose(void);                             /* De-initialize RGLinfo (buffers, shaders, textures) */
-RGLDEF void rglSetFramebufferSize(int width,    i32 height);            /* Set current framebuffer size */
+RGLDEF void rglSetFramebufferSize(i32 width, i32 height);            /* Set current framebuffer size */
 
 RGLDEF void rglRenderBatch(void);                         /* Draw render batch data (Update->Draw->Reset) */
 RGLDEF void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocation, u32 colorLocation);
@@ -311,6 +311,8 @@ typedef GLint (*glGetUniformLocationPROC)(GLuint program, const GLchar *name);
 typedef void (*glUniformMatrix4fvPROC)(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 typedef void (*glTexImage2DPROC)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels);
 typedef void (*glActiveTexturePROC) (GLenum texture);
+typedef void (*glDebugMessageCallbackPROC)(void* callback, const void*);
+typedef void (*glDebugMessageCallbackPROC)(void* callback, const void*);
 
 glShaderSourcePROC glShaderSourceSRC = NULL;
 glCreateShaderPROC glCreateShaderSRC = NULL;
@@ -341,6 +343,7 @@ glBindVertexArrayPROC glBindVertexArraySRC = NULL;
 glGetUniformLocationPROC glGetUniformLocationSRC = NULL;
 glUniformMatrix4fvPROC glUniformMatrix4fvSRC = NULL;
 glActiveTexturePROC glActiveTextureSRC = NULL;
+glDebugMessageCallbackPROC glDebugMessageCallbackSRC = NULL;
 
 #define glActiveTexture glActiveTextureSRC
 #define glShaderSource glShaderSourceSRC
@@ -371,6 +374,7 @@ glActiveTexturePROC glActiveTextureSRC = NULL;
 #define glBindVertexArray glBindVertexArraySRC
 #define glGetUniformLocation glGetUniformLocationSRC
 #define glUniformMatrix4fv glUniformMatrix4fvSRC
+#define glDebugMessageCallback glDebugMessageCallbackSRC
 
 extern int RGL_loadGL3(RGLloadfunc proc);
 
@@ -542,7 +546,7 @@ void RGL_opengl_getError() {
 #endif
 
 void RGL_debug_shader(u32 src, const char *shader, const char *action) {
-	GLint status;
+    GLint status;
 	if (action[0] == 'l')
 		glGetProgramiv(src, GL_LINK_STATUS, &status);
 	else
@@ -582,7 +586,7 @@ void rglInit(int width, i32 height, void *loader) {
         printf("Failed to load an OpenGL 3.3 Context, reverting to OpenGL Legacy\n");
         #endif
 
-        RGLinfo.legacy = 1;   
+        RGLinfo.legacy = 2;   
         return;
     }
 
@@ -948,7 +952,8 @@ RGL_MATRIX rglMatrixScale(float x, float y, float z) {
 
 void rglLegacy(u8 state) {
     #if defined(RGL_MODERN_OPENGL)
-    RGLinfo.legacy = state;
+    if (state != 2)
+        RGLinfo.legacy = state;
     #endif
 }
 
@@ -1291,6 +1296,7 @@ int RGL_loadGL3(RGLloadfunc proc) {
     RGL_PROC_DEF(proc, glGetUniformLocation);
     RGL_PROC_DEF(proc, glUniformMatrix4fv);
     RGL_PROC_DEF(proc, glActiveTexture);
+    RGL_PROC_DEF(proc, glDebugMessageCallback);
 
     if (
         glShaderSourceSRC == NULL ||
@@ -1320,9 +1326,18 @@ int RGL_loadGL3(RGLloadfunc proc) {
         glGenBuffersSRC == NULL ||
         glBindVertexArraySRC == NULL ||
         glGetUniformLocationSRC == NULL ||
-        glUniformMatrix4fvSRC == NULL
+        glUniformMatrix4fvSRC == NULL ||
+        glDebugMessageCallbackSRC == NULL
     )
         return 1;
+
+    GLuint vao;
+    glGenVertexArraysSRC(1, &vao);
+    
+    if (vao == 0)
+        return 1;
+    
+    glDeleteVertexArraysSRC(1, &vao);
     
     return 0;
 }
