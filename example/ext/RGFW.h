@@ -60,7 +60,6 @@
 			Copyright (c) 2006-2019 Camilla Löwy
 */
 
-#define GL_SILENCE_DEPRECATION
 #ifndef RGFW_MALLOC
 #include <stdlib.h>
 #include <time.h>
@@ -142,6 +141,7 @@ extern "C" {
 #define RGFW_OPENGL (1L<<7) /* use normal opengl (if another version is also selected) */
 #define RGFW_FULLSCREEN (1L<<8) /* if the window should be fullscreen by default or not */
 #define RGFW_CENTER (1L<<10)
+#define RGFW_OPENGL_SOFTWARE (1L<<11) /* use OpenGL software rendering */
 /*! event codes */
 #define RGFW_keyPressed 2 /*!< a key has been pressed*/
 #define RGFW_keyReleased 3 /*!< a key has been released*/
@@ -393,6 +393,7 @@ RGFWDEF char RGFW_keystrToChar(const char*);
 RGFWDEF const char* RGFW_window_readClipboard(RGFW_window* win); /*!< read clipboard data */
 RGFWDEF void RGFW_window_writeClipboard(RGFW_window* win, const char* text, u32 textLen); /*!< write text to the clipboard */
 
+#ifndef RGFW_NO_THREADS
 /*! threading functions*/
 
 /*! NOTE! (for X11/linux) : if you define a window in a thread, it must be run after the original thread's window is created or else there will be a memory error */
@@ -405,6 +406,7 @@ RGFWDEF RGFW_thread RGFW_createThread(void* (*function_ptr)(void*), void* args);
 RGFWDEF void RGFW_cancelThread(RGFW_thread thread); /*!< cancels a thread*/
 RGFWDEF void RGFW_joinThread(RGFW_thread thread); /*!< join thread to current thread */
 RGFWDEF void RGFW_setThreadPriority(RGFW_thread thread, u8 priority); /*!< sets the priority priority  */
+#endif
 
 /*! gamepad/joystick functions */
 
@@ -529,6 +531,12 @@ u8 RGFW_Error() { return RGFW_error; }
     attribs[index++] = a; \
     attribs[index++] = v; \
 }
+
+#ifdef __APPLE__
+#define GL_SILENCE_DEPRECATION
+#define SILICON_IMPLEMENTATION
+#include "silicon.h"
+#endif
 
 #ifdef RGFW_OSMESA
 #ifndef __APPLE__
@@ -989,6 +997,9 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 		x = (screenR[0] - w) / 2;
 		y = (screenR[1] - h) / 2;
 	}
+
+	if (RGFW_OPENGL_SOFTWARE & args)
+		setenv("LIBGL_ALWAYS_SOFTWARE", "1", 1);
 
 	/* set and init the new window's data */
 
@@ -2198,9 +2209,52 @@ typedef HGLRC WINAPI (*wglCreateContextAttribsARB_type)(HDC hdc, HGLRC hShareCon
         const i32 *attribList);
 wglCreateContextAttribsARB_type wglCreateContextAttribsARB = NULL;
 
-typedef BOOL WINAPI wglChoosePixelFormatARB_type(HDC hdc, const i32 *piAttribIList,
-        const FLOAT *pfAttribFList, UINT nMaxFormats, i32 *piFormats, UINT *nNumFormats);
-wglChoosePixelFormatARB_type *wglChoosePixelFormatARB;
+/* defines for creating ARB attributes */
+#define WGL_CONTEXT_MAJOR_VERSION_ARB             0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB             0x2092
+#define WGL_TRANSPARENT_ARB   					  0x200A
+#define WGL_DRAW_TO_WINDOW_ARB                    0x2001
+#define WGL_ACCELERATION_ARB                      0x2003
+#define WGL_SUPPORT_OPENGL_ARB                    0x2010
+#define WGL_DOUBLE_BUFFER_ARB                     0x2011
+#define WGL_PIXEL_TYPE_ARB                        0x2013
+#define WGL_COLOR_BITS_ARB                        0x2014
+#define WGL_RED_BITS_ARB   						  0x2015
+#define WGL_GREEN_BITS_ARB  					  0x2017 
+#define WGL_BLUE_BITS_ARB   					  0x2019
+#define WGL_ALPHA_BITS_ARB   					  0x201B
+#define WGL_DEPTH_BITS_ARB                        0x2022
+#define WGL_STENCIL_BITS_ARB 					  0x2023
+#define WGL_FULL_ACCELERATION_ARB                 0x2027
+#define WGL_TYPE_RGBA_ARB                         0x202B
+#define WGL_CONTEXT_FLAGS_ARB                     0x2094
+#define WGL_CONTEXT_PROFILE_MASK_ARB              0x9126
+#define WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB 0x00000002
+
+#ifdef RGFW_WGL_LOAD
+static HMODULE wglinstance = NULL;
+typedef HGLRC(WINAPI *PFN_wglCreateContext)(HDC);
+typedef BOOL(WINAPI *PFN_wglDeleteContext)(HGLRC);
+typedef PROC(WINAPI *PFN_wglGetProcAddress)(LPCSTR);
+typedef BOOL(WINAPI *PFN_wglMakeCurrent)(HDC, HGLRC);
+typedef HDC (WINAPI *PFN_wglGetCurrentDC)();
+typedef HGLRC (WINAPI *PFN_wglGetCurrentContext)();
+
+PFN_wglCreateContext wglCreateContextSRC;
+PFN_wglDeleteContext wglDeleteContextSRC;
+PFN_wglGetProcAddress wglGetProcAddressSRC;
+PFN_wglMakeCurrent wglMakeCurrentSRC;
+PFN_wglGetCurrentDC wglGetCurrentDCSRC;
+PFN_wglGetCurrentContext wglGetCurrentContextSRC;
+
+#define wglCreateContext wglCreateContextSRC
+#define wglDeleteContext wglDeleteContextSRC
+#define wglGetProcAddress wglGetProcAddressSRC
+#define wglMakeCurrent wglMakeCurrentSRC
+
+#define wglGetCurrentDC wglGetCurrentDCSRC
+#define wglGetCurrentContext wglGetCurrentContextSRC
+#endif
 
 /* defines for creating ARB attributes */
 #define WGL_CONTEXT_MAJOR_VERSION_ARB             0x2091
@@ -2247,6 +2301,7 @@ PFN_wglGetCurrentContext wglGetCurrentContextSRC;
 void* RGFW_getProcAddress(const char* procname) { return (void*)wglGetProcAddress(procname); }
 #endif
 
+
 RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64 args) {
     #ifdef RGFW_WGL_LOAD
 	if (wglinstance == NULL) { 
@@ -2260,6 +2315,9 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 		wglGetCurrentContextSRC = (PFN_wglGetCurrentContext) GetProcAddress(wglinstance, "wglGetCurrentContext");
 	}
 	#endif
+
+	typedef BOOL (APIENTRY *PFNWGLCHOOSEPIXELFORMATARBPROC)(HDC hdc, const int *piAttribIList, const FLOAT *pfAttribFList, UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
+	static PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB = NULL;
 
     if (name[0] == 0) name = (char*)" ";
 
@@ -2306,7 +2364,7 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
     WNDCLASSA Class = {0}; /* Setup the Window class. */
 	Class.lpszClassName = name;
 	Class.hInstance = inh;
-	Class.hCursor = LoadCursor(NULL, IDC_ARROW);
+	win->cursor = Class.hCursor = LoadCursor(NULL, IDC_ARROW);
 	Class.lpfnWndProc = DefWindowProc;
 
     RegisterClassA(&Class);
@@ -2317,12 +2375,23 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 		window_style |= WS_CAPTION | WS_SYSMENU | WS_BORDER | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
 		
 		if (!(RGFW_NO_RESIZE & args))
-			window_style |= WS_SIZEBOX;
+			window_style |= WS_SIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME;
 	}
 	else
-		window_style |= WS_POPUP | WS_VISIBLE;
+		window_style |= WS_POPUP | WS_VISIBLE |  WS_SYSMENU | WS_MINIMIZEBOX;
 
     win->display = CreateWindowA( Class.lpszClassName, name, window_style, x, y, w, h, 0, 0, inh, 0);
+
+    RECT windowRect, clientRect;
+	GetWindowRect(win->display, &windowRect);
+	GetClientRect(win->display, &clientRect);
+
+	#ifndef RGFW_RECT
+	h +=  (windowRect.bottom - windowRect.top) - (clientRect.bottom - clientRect.top);
+	#else
+	h += (windowRect.bottom - windowRect.top) - (clientRect.bottom - clientRect.top);
+	#endif
+
 
 	if (RGFW_TRANSPARENT_WINDOW & args)
 		SetWindowLong((HWND)win->display, GWL_EXSTYLE, GetWindowLong((HWND)win->display, GWL_EXSTYLE) | WS_EX_LAYERED);
@@ -2333,15 +2402,20 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
     win->window = GetDC((HWND)win->display);
 
 
- 	#ifdef RGFW_GL 
-    HGLRC prc;
+  	#ifdef RGFW_GL 
+    
+	HGLRC prc;
     HDC pdc;
 
 	PIXELFORMATDESCRIPTOR pfd;
     ZeroMemory(&pfd, sizeof(pfd));
     pfd.nSize = sizeof(pfd);
     pfd.nVersion = 1;
-    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER ;
+
+	if (RGFW_OPENGL_SOFTWARE & args)
+		pfd.dwFlags |= PFD_GENERIC_FORMAT | PFD_GENERIC_ACCELERATED;
+
     pfd.iPixelType = PFD_TYPE_RGBA;
     pfd.cColorBits = 24;
 
@@ -2358,11 +2432,18 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
         wglCreateContextAttribsARB = (wglCreateContextAttribsARB_type)
             wglGetProcAddress("wglCreateContextAttribsARB");
 
-        wglSwapIntervalEXT = (PFN_wglSwapIntervalEXT)
-            wglGetProcAddress("wglSwapIntervalEXT");
+
+		wglChoosePixelFormatARB = (PFNWGLCHOOSEPIXELFORMATARBPROC)wglGetProcAddress("wglChoosePixelFormatARB");
     }
 
-    wglMakeCurrent(pdc, prc);
+	if ((wglCreateContextAttribsARB != NULL && wglChoosePixelFormatARB == NULL) || wglChoosePixelFormatARB == NULL) {
+		#ifdef RGFW_DEBUG
+		printf("Failed to load wglCreateContextAttribsARB func\n");
+		exit(0);
+		#endif
+	}
+	
+	wglMakeCurrent(pdc, prc);
 
     if (wglCreateContextAttribsARB != NULL) {
         wglDeleteContext(win->glWin);
@@ -2370,17 +2451,21 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
       	i32 attribs[40];
 		PIXELFORMATDESCRIPTOR pfd = {sizeof(pfd), 1, PFD_TYPE_RGBA, PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, 32, 8, PFD_MAIN_PLANE, 24, 8};
 
+		if (RGFW_OPENGL_SOFTWARE & args)
+			pfd.dwFlags |= PFD_GENERIC_FORMAT | PFD_GENERIC_ACCELERATED;
+    	
 		i32 pixelFormat = ChoosePixelFormat(win->window, &pfd);
 
 		PIXELFORMATDESCRIPTOR SuggestedPixelFormat;
 
 		DescribePixelFormat(win->window, pixelFormat, sizeof(SuggestedPixelFormat), &SuggestedPixelFormat);
+
 		SetPixelFormat (win->window, pixelFormat, &SuggestedPixelFormat);
 
-        DescribePixelFormat(win->window,
-                            pixelFormat, sizeof(pfd), &pfd);
+        DescribePixelFormat(win->window, pixelFormat, sizeof(pfd), &pfd);
 
-    	SetPixelFormat(win->window, pixelFormat, &pfd);
+		SetPixelFormat(win->window, pixelFormat, &pfd);
+
         if (wglCreateContextAttribsARB) {
 			i32 index = 0;
 			
@@ -2389,6 +2474,7 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
             if (RGFW_majorVersion || RGFW_minorVersion) {
                 SET_ATTRIB(WGL_CONTEXT_MAJOR_VERSION_ARB, RGFW_majorVersion);
                 SET_ATTRIB(WGL_CONTEXT_MINOR_VERSION_ARB, RGFW_minorVersion);
+				SET_ATTRIB(WGL_SUPPORT_OPENGL_ARB, GL_TRUE);
             }
 
             SET_ATTRIB(0, 0);
@@ -2404,35 +2490,6 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 		printf("Failed to create an accelerated OpenGL Context\n");
 	#endif
 
-
-	#ifdef RGFW_OSMESA
-
-	#ifdef RGFW_LINK_OSMESA
-	OSMesaMakeCurrentSource = (PFN_OSMesaMakeCurrent) GetProcAddress(win->display, "OSMesaMakeCurrent");
-	OSMesaCreateContextSource = (PFN_OSMesaCreateContext) GetProcAddress(win->display, "OSMesaCreateContext");
-	OSMesaDestroyContextSource = (PFN_OSMesaDestroyContext) GetProcAddress(win->display, "OSMesaDestroyContext");
-	#endif
-
-	if (RGFW_OPENGL & args) {
-	#endif
-		#ifdef RGFW_GL
-		ReleaseDC((HWND)win->display, (HDC)win->window);
-		win->window = GetDC((HWND)win->display);
-		wglMakeCurrent((HDC)win->window, (HGLRC)win->glWin);
-		#endif
-	#if defined(RGFW_OSMESA) || defined(RGFW_BUFFER)
-		win->buffer = NULL;
-	#endif
-	#ifdef RGFW_OSMESA 
-	}
-	else {
-		win->glWin = (void*)OSMesaCreateContext(OSMESA_RGBA, NULL);
-		win->buffer = RGFW_MALLOC(w * h * 4);
-
-		OSMesaMakeCurrent(win->glWin, win->buffer, GL_UNSIGNED_BYTE, w, h);
-	}
-	#endif
-
 	#ifdef RGFW_EGL
 	RGFW_createOpenGLContext(win);
 	#endif
@@ -2446,7 +2503,6 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 
     return win;
 }
-
 
 u32* RGFW_window_screenSize(RGFW_window* win) {
 	static u32 RGFW_ScreenSize[2];
@@ -2920,16 +2976,15 @@ char* createUTF8FromWideStringWin32(const WCHAR* source) {
 }
 
 
-
+#ifndef RGFW_NO_THREADS
 RGFW_thread RGFW_createThread(void* (*function_ptr)(void*), void* args) { return CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)*function_ptr, args, 0, NULL);  }
 void RGFW_cancelThread(RGFW_thread thread) { CloseHandle((HANDLE)thread);  }
 void RGFW_joinThread(RGFW_thread thread) { WaitForSingleObject((HANDLE)thread, INFINITE); }
 void RGFW_setThreadPriority(RGFW_thread thread, u8 priority) { SetThreadPriority((HANDLE)thread, priority); }
 #endif
+#endif
 
 #if defined(__APPLE__) && !defined(RGFW_MACOS_X11)
-#define SILICON_IMPLEMENTATION
-#include "silicon.h"
 #include <OpenGL/gl.h>
 	
 void* RGFWnsglFramework = NULL; 
@@ -3067,7 +3122,7 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 	#endif 
 
 	win->fpsCap = 0;
-	win->event.inFocus = 0;
+	win->event.inFocus = 1;
 	win->event.type = 0;
 	win->event.droppedFilesCount = 0;
 
@@ -3113,15 +3168,18 @@ RGFW_window* RGFW_createWindow(const char* name, i32 x, i32 y, i32 w, i32 h, u64
 
 	#ifdef RGFW_GL
 	NSOpenGLPixelFormatAttribute attributes[] = {
-		NSOpenGLPFANoRecovery,
 		NSOpenGLPFAAccelerated,
 		NSOpenGLPFADoubleBuffer,
 		NSOpenGLPFAColorSize, 24,
 		NSOpenGLPFAAlphaSize, 8,
 		NSOpenGLPFADepthSize, 24,
 		NSOpenGLPFAStencilSize, 8,
+		NSOpenGLPFANoRecovery,
 		0, 0, 0
 	};
+	
+	if (RGFW_OPENGL_SOFTWARE & args)
+		attributes[2] = 0;
 
 	if (RGFW_majorVersion >= 4 || RGFW_majorVersion  >= 3) {
 		attributes[11] = NSOpenGLPFAOpenGLProfile;
@@ -3525,6 +3583,7 @@ void RGFW_window_close(RGFW_window* win){
 
 #if defined(RGFW_X11) || defined(__APPLE__)
 
+#ifndef RGFW_NO_THREADS
 #include <pthread.h>
 
 RGFW_thread RGFW_createThread(void* (*function_ptr)(void*), void* args) {
@@ -3536,6 +3595,7 @@ void RGFW_cancelThread(RGFW_thread thread) { pthread_cancel((pthread_t)thread); 
 void RGFW_joinThread(RGFW_thread thread) { pthread_join((pthread_t)thread, NULL); }
 #ifdef __linux__
 void RGFW_setThreadPriority(RGFW_thread thread, u8 priority) { pthread_setschedprio(thread, priority); }
+#endif
 #endif
 #endif
 
@@ -3573,7 +3633,25 @@ void RGFW_window_swapInterval(RGFW_window* win, i32 swapInterval) {
 	((PFNGLXSWAPINTERVALEXTPROC)glXGetProcAddress((GLubyte*)"glXSwapIntervalEXT"))((Display*)win->display, (Window)win->window, swapInterval); 
 	#endif
 	#ifdef RGFW_WINDOWS
-	wglSwapIntervalEXT(swapInterval);
+
+	typedef BOOL (APIENTRY *PFNWGLSWAPINTERVALEXTPROC)(int interval);
+	static PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = NULL;
+	static void* loadSwapFunc = (void*)1;
+
+	if (loadSwapFunc == NULL) {
+		printf("wglSwapIntervalEXT not supported\n");
+		win->fpsCap = (swapInterval == 1) ? 0 : swapInterval;
+		return;
+	}
+
+	if (wglSwapIntervalEXT == NULL) {
+		loadSwapFunc = wglGetProcAddress("wglSwapIntervalEXT");
+		wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)loadSwapFunc;
+	}
+
+	if (wglSwapIntervalEXT(swapInterval) == FALSE)
+		printf("Failed to set swap interval\n");
+
 	#endif
 	#if defined(__APPLE__) && !defined(RGFW_MACOS_X11)
 	win->glWin = NSOpenGLView_openGLContext(win->view);
@@ -3607,8 +3685,6 @@ void RGFW_window_swapBuffers(RGFW_window* win) {
 	NSOpenGLContext_flushBuffer(win->glWin);
 	#endif
 	#endif
-
-
 
 	/* clear the window*/
 
