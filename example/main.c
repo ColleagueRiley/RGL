@@ -6,8 +6,6 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 
-//#define RGL_LEGACY_OPENGL
-
 #include "RGL.h"
 
 #include "RGFW.h"
@@ -15,8 +13,6 @@
 #include "stb_image.h"
 
 #include <stdbool.h>
-
-//#include "../draw.c"
 
 typedef struct { int x, y, w, h; } rect;
 typedef struct { int r, g, b, a; } color;
@@ -65,10 +61,6 @@ int main() {
 
     bool running = true;
     
-    //u32* size = RGFW_window_screenSize(win);
-    //loat scaleRatio = (float)win->w/(float)size[0];
-
-    RGL_MATRIX screenScale = //rglMatrixScale(scaleRatio, scaleRatio, 1.0f);
     rglMatrixScale((float)win->w /(float)win->w, (float)win-> h / (float)win-> h, 1.0f);
     
     while (running) {  
@@ -110,27 +102,24 @@ int main() {
 
         glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
 
-        size_t i;
-        for (i = 0; i < 2000; i++) {
-            rglSetTexture(tex);
-            rglBegin(GL_QUADS);
-            rglTexCoord2f(0, 0);
-            rglColor4f(1, 0, 0, 1); 
-            rglVertex3f(300, 300, 0);
-            
-            rglTexCoord2f(1, 0);
-            rglColor4f(0, 1, 0, 1); 
-            rglVertex3f(400, 300, 0);
-            
-            rglTexCoord2f(1, 0);
-            rglColor4f(0, 1, 0, 1); 
-            rglVertex3f(400, 300, 0);
-            
-            rglTexCoord2f(0.5f, 1);
-            rglColor4f(0, 0, 1, 1); 
-            rglVertex3f(250, 400, 0);
-            rglEnd();
-        }
+        rglSetTexture(tex);
+        rglBegin(GL_QUADS);
+        rglTexCoord2f(0, 0);
+        rglColor4f(1, 0, 0, 1); 
+        rglVertex3f(300, 300, 0);
+        
+        rglTexCoord2f(1, 0);
+        rglColor4f(0, 1, 0, 1); 
+        rglVertex3f(400, 300, 0);
+        
+        rglTexCoord2f(1, 0);
+        rglColor4f(0, 1, 0, 1); 
+        rglVertex3f(400, 300, 0);
+        
+        rglTexCoord2f(0.5f, 1);
+        rglColor4f(0, 0, 1, 1); 
+        rglVertex3f(250, 400, 0);
+        rglEnd();
         
 
         rglPopMatrix();
@@ -138,12 +127,8 @@ int main() {
 
         rglLoadIdentity();
 
-        rglMultMatrixf(screenScale.m);
-
-
         rglRenderBatch();
-        
-        rglMultMatrixf(screenScale.m);
+
         RGFW_window_swapBuffers(win);
     }
 
