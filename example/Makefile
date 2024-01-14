@@ -21,12 +21,12 @@ OUTPUT = $(NAME).exe
 ifeq ($(detected_OS),Windows)
 	LIBS := -lopengl32 -lshell32 -lgdi32 -lm --static
 endif
-ifeq ($(detected_OS),Darwin)        # Mac OS X
-	LIBS := -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo
+ifeq ($(detected_OS),Darwin)        # Mac OS X, I hate you Steve Jobs
+	LIBS := -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo -w
 	OUTPUT = $(NAME)
 endif
 ifeq ($(detected_OS),Linux)
-    LIBS := -I./include -lX11 -lGL -lm 
+    LIBS := -I./include -lX11 -lGLX -lm -lGL
 	OUTPUT = $(NAME)
 endif
 
