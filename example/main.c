@@ -41,7 +41,10 @@ void glPrerequisites(rect r, color c) {
 }
 
 int main() {
+    #ifdef RGL_MODERN_OPENGL
     RGFW_setGLVersion(3, 3);
+    #endif
+    
     RGFW_window* win = RGFW_createWindow("RGL Example Window", 500, 500, 500, 500, 0);
 
     RGFW_window_makeCurrent(win);
