@@ -45,7 +45,7 @@ int main() {
     RGFW_setGLVersion(3, 3);
     #endif
     
-    RGFW_window* win = RGFW_createWindow("RGL Example Window", 500, 500, 500, 500, 0);
+    RGFW_window* win = RGFW_createWindow("RGL Example Window", 500, 500, 500, 500, RGFW_CENTER);
 
     RGFW_window_makeCurrent(win);
 
