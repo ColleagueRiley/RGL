@@ -49,7 +49,7 @@ int main() {
 
     RGFW_window_makeCurrent(win);
 
-    rglInit(500, 500, RGFW_getProcAddress);
+    rglInit(win->w, win->h, RGFW_getProcAddress);
 
     int w, h, c;
     u8* data = stbi_load("RSGL.png", &w, &h, &c, 0);
@@ -73,7 +73,8 @@ int main() {
                 break;
             }
         }
-        
+
+        rglSetFramebufferSize(win->w, win->h);       
 
         glClearColor(255, 255, 255, 255);
         glClear(GL_COLOR_BUFFER_BIT);
