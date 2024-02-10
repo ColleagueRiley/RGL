@@ -42,24 +42,24 @@ void glPrerequisites(rect r, color c) {
 
 int main() {
     #ifdef RGL_MODERN_OPENGL
-    RGFW_setGLVersion(3, 3);
+    RGFW_setGLVersion(4, 5);
     #endif
     
     RGFW_window* win = RGFW_createWindow("RGL Example Window", 500, 500, 500, 500, RGFW_CENTER);
 
     RGFW_window_makeCurrent(win);
 
-    rglInit(win->w, win->h, RGFW_getProcAddress);
+    rglInit(RGFW_getProcAddress);
 
     int w, h, c;
     u8* data = stbi_load("RSGL.png", &w, &h, &c, 0);
 
-    u32 tex = rglCreateTexture(data, w, h, c);
+    u32 RSGLtex = rglCreateTexture(data, w, h, c);
     free(data);
 
     data = stbi_load("RGFW.png", &w, &h, &c, 0);
 
-    u32 tex2 = rglCreateTexture(data, w, h, c);
+    u32 RGFWtex = rglCreateTexture(data, w, h, c);
     free(data);
 
     bool running = true;
@@ -74,7 +74,7 @@ int main() {
             }
         }
 
-        rglSetFramebufferSize(win->w, win->h);       
+        glViewport(0, 0, win->w, win->h);
 
         glClearColor(255, 255, 255, 255);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -95,7 +95,7 @@ int main() {
             rglVertex2f(-0.6, 0.75);
         rglEnd();
 
-        rglSetTexture(tex2);
+        rglSetTexture(RSGLtex);
         
         rglBegin(GL_QUADS);
             rglTexCoord2f(0, 0); rglColor3f(1, 0, 0); rglVertex2f(-0.6, -0.75);
@@ -106,7 +106,7 @@ int main() {
 
         glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
 
-        rglSetTexture(tex);
+        rglSetTexture(RGFWtex);
         rglBegin(GL_QUADS);
         rglTexCoord2f(0, 0);
         rglColor4f(1, 0, 0, 1); 
@@ -136,8 +136,8 @@ int main() {
         RGFW_window_swapBuffers(win);
     }
 
-    glDeleteTextures(1, &tex);
-    glDeleteTextures(1, &tex2);
+    glDeleteTextures(1, &RGFWtex);
+    glDeleteTextures(1, &RSGLtex);
 
     rglClose();
     RGFW_window_close(win);
