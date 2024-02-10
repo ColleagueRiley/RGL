@@ -64,8 +64,6 @@ int main() {
 
     bool running = true;
     
-    rglMatrixScale((float)win->w /(float)win->w, (float)win-> h / (float)win-> h, 1.0f);
-    
     while (running) {  
         while(RGFW_window_checkEvent(win)) {   
             if (win->event.type == RGFW_quit) {
