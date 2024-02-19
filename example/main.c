@@ -75,11 +75,11 @@ int main() {
         glViewport(0, 0, win->w, win->h);
 
         glClearColor(255, 255, 255, 255);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         rglLegacy(1);
         
-        rglBegin(RGL_LINES);
+        rglBegin(RGL_LINES_2D);
             rglColor3f(0, 1, 0); 
             rglVertex2f(0.6, -0.75);
             rglVertex2f(-0.6, -0.75);
@@ -95,7 +95,7 @@ int main() {
 
         rglSetTexture(RSGLtex);
         
-        rglBegin(GL_QUADS);
+        rglBegin(RGL_QUADS_2D);
             rglTexCoord2f(0, 0); rglColor3f(1, 0, 0); rglVertex2f(-0.6, -0.75);
             rglTexCoord2f(1, 0); rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
             rglTexCoord2f(1, 0); rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
@@ -105,7 +105,7 @@ int main() {
         glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
 
         rglSetTexture(RGFWtex);
-        rglBegin(GL_QUADS);
+        rglBegin(RGL_QUADS_2D);
         rglTexCoord2f(0, 0);
         rglColor4f(1, 0, 0, 1); 
         rglVertex3f(300, 300, 0);
