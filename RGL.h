@@ -1076,12 +1076,18 @@ void rglBegin(int mode) {
         RGLinfo.batches[RGLinfo.drawCounter - 1].tex != RGLinfo.tex ||
         RGLinfo.batches[RGLinfo.drawCounter - 1].lineWidth != RGLinfo.lineWidth ||
         RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount > 0) {
-            if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES_2D) 
-                RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment = ((RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount < 4)? RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount : RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%4);
-            else if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_TRIANGLES || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_QUADS || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_TRIANGLES_2D || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_QUADS_2D) 
-                RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment = ((RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount < 4)? 1 : (4 - (RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%4)));
-            else 
-                RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment = 0;
+            {
+                u32 mode = RGLinfo.batches[RGLinfo.drawCounter - 1].mode;
+                if (mode > 0x0010)
+                    mode -= 0x0010;
+
+                if (mode == RGL_LINES) 
+                    RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment = ((RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount < 4)? RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount : RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%4);
+                else if (mode == RGL_TRIANGLES || mode == RGL_QUADS) 
+                    RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment = ((RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount < 4)? 1 : (4 - (RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%4)));
+                else 
+                    RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment = 0;
+            }
 
             if (!rglCheckRenderBatchLimit(RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment)) {
                 RGLinfo.vertexCounter += RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment;
@@ -1159,14 +1165,15 @@ void rglVertex3f(float x, float y, float z) {
     }
 
     if (RGLinfo.vertexCounter > (RGLinfo.elementCount * 4 - 4)) {
-        if ((RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES_2D) &&
-            (RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%2 == 0))
+        u32 mode = RGLinfo.batches[RGLinfo.drawCounter - 1].mode;
+        if (mode > 0x0010)
+            mode -= 0x0010;
+
+        if (mode == RGL_LINES && RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%2 == 0)
                 rglCheckRenderBatchLimit(2 + 1);
-        else if ((RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_TRIANGLES || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_TRIANGLES_2D) &&
-            (RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%3 == 0))
+        else if (mode == RGL_TRIANGLES && RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%3 == 0)
                 rglCheckRenderBatchLimit(3 + 1);
-        else if ((RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_QUADS || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_QUADS_2D) &&
-            (RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%4 == 0))
+        else if (mode == RGL_QUADS && RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%4 == 0)
                 rglCheckRenderBatchLimit(4 + 1);
     }
 
