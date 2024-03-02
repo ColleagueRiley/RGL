@@ -42,10 +42,10 @@ void glPrerequisites(rect r, color c) {
 
 int main() {
     #ifdef RGL_MODERN_OPENGL
-    RGFW_setGLVersion(4, 5);
+    RGFW_setGLVersion(3, 3);
     #endif
     
-    RGFW_window* win = RGFW_createWindow("RGL Example Window", 500, 500, 500, 500, RGFW_CENTER);
+    RGFW_window* win = RGFW_createWindow("RGL Example Window", RGFW_RECT(500, 500, 500, 500), RGFW_CENTER);
 
     RGFW_window_makeCurrent(win);
 
@@ -72,7 +72,7 @@ int main() {
             }
         }
 
-        glViewport(0, 0, win->w, win->h);
+        glViewport(0, 0, win->r.w, win->r.h);
 
         glClearColor(255, 255, 255, 255);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
