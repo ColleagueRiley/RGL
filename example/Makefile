@@ -1,7 +1,7 @@
 NAME = main
 CC = gcc
 
-LIBS := -lopengl32 -lshell32 -lgdi32 -lm --static
+LIBS := -lXinput -lShcore -lopengl32 -lshell32 -lgdi32 -lm --static
 
 ifneq (,$(filter $(CC),winegcc x86_64-w64-mingw32-gcc))
     detected_OS := Windows
@@ -19,7 +19,7 @@ endif
 OUTPUT = $(NAME).exe
 
 ifeq ($(detected_OS),Windows)
-	LIBS := -lopengl32 -lshell32 -lgdi32 -lm --static
+	LIBS := -lXinput -lShcore -lopengl32 -lshell32 -lgdi32 -lm --static
 endif
 ifeq ($(detected_OS),Darwin)        # Mac OS X, I hate you Steve Jobs
 	LIBS := -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo -w
