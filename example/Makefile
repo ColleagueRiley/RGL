@@ -26,7 +26,7 @@ ifeq ($(detected_OS),Darwin)        # Mac OS X, I hate you Steve Jobs
 	OUTPUT = $(NAME)
 endif
 ifeq ($(detected_OS),Linux)
-    LIBS := -I./include -lX11 -lGLX -lm -lGL
+    LIBS := -I./include -lXrandr -lX11 -lGLX -lm -lGL
 	OUTPUT = $(NAME)
 endif
 
