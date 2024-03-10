@@ -161,15 +161,26 @@ typedef u8 b8;
 #define RGL_QUADS                                 0x0007
 #endif
 
-#ifndef GL_PERSPECTIVE_CORRECTION_HINT
-#define GL_PERSPECTIVE_CORRECTION_HINT		0x0C50
-#define GL_POINT_SMOOTH_HINT			0x0C51
-#define GL_LINE_SMOOTH_HINT			0x0C52
-#define GL_POLYGON_SMOOTH_HINT			0x0C53
-#define GL_FOG_HINT				0x0C54
-#define GL_DONT_CARE				0x1100
-#define GL_FASTEST				0x1101
-#define GL_NICEST				0x1102
+#ifndef RGL_PERSPECTIVE_CORRECTION_HINT
+#define RGL_PERSPECTIVE_CORRECTION_HINT		0x0C50
+#define RGL_POINT_SMOOTH_HINT			0x0C51
+#define RGL_LINE_SMOOTH_HINT			0x0C52
+#define RGL_POLYGON_SMOOTH_HINT			0x0C53
+#define RGL_FOG_HINT				0x0C54
+#define RGL_DONT_CARE				0x1100
+#define RGL_FASTEST				0x1101
+#define RGL_NICEST				0x1102
+
+#define GL_DEPTH_TEST               0x0B71
+#define GL_LEQUAL                   0x0203
+#define GL_ONE_MINUS_SRC_ALPHA      0x0303
+#define GL_BLEND                    0x0BE2
+#define GL_BACK                     0x0405
+#define GL_CCW                      0x0901
+#define GL_CULL_FACE                0x0B44
+#define GL_COLOR_BUFFER_BIT         0x00004000
+#define GL_DEPTH_BUFFER_BIT         0x00000100
+#define GL_SRC_ALPHA                0x0302
 #endif
 
 #ifndef GL_RG
@@ -240,6 +251,13 @@ RGLDEF void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoo
 
 RGLDEF void rglSetTexture(u32 id);               /* Set current texture for render batch and check buffers limits */
 RGLDEF u32 rglCreateTexture(u8* bitmap, u32 width, u32 height, u8 channels); /* create texture */
+RGLDEF void rglUpdateTexture(u32 texture, u8* bitmap, u32 width, u32 height, u8 channels); /* update texture */
+RGLDEF void rglDeleteTextures(GLsizei n, const GLuint * textures);
+
+RGLDEF void rglPushPixelValues(GLint alignment, GLint rowLength, GLint skipPixels, GLint skipRows);
+RGLDEF void rglTextureSwizzleMask(u32 atlas, u32 param, i32 swizzleRgbaParams[4]);
+
+RGLDEF void rglAtlasAddBitmap(u32 atlas, u8* bitmap, float x, float y, float width, float height);
 
 /* RGL implementation of gluPerspective */
 RGLDEF void rglPerspective(double fovY, double aspect, double zNear, double zFar); /* set up a perspective projection matrix */
@@ -255,7 +273,21 @@ RGLDEF void rglGetError(void);
 #endif
 
 RGLDEF void rglBegin(int mode);
+
 RGLDEF void rglLineWidth(float width);
+RGLDEF void rglViewport(GLint x, GLint y, GLsizei width, GLsizei height);
+RGLDEF void rglClear(GLbitfield mask);
+RGLDEF void rglClearColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
+RGLDEF void rglDepthFunc(GLenum func);
+RGLDEF void rglCullFace(GLenum mode);
+RGLDEF void rglFrontFace(GLenum mode);
+#ifdef RGL_OPENGL_43
+RGLDEF void rglClearDepth(float depth);
+RGLDEF void rglBlendFunc(GLenum sfactor, GLenum dfactor)
+#endif
+
+RGLDEF void rglHint(GLenum target, GLenum mode);
+RGLDEF void rglEnable(GLenum cap);
 
 #if defined(RGL_OPENGL_LEGACY)
 #define rglColor3f glColor3f
@@ -276,7 +308,6 @@ RGLDEF void rglLineWidth(float width);
 #define rglOrtho glOrtho
 #define rglFrustum glFrustum
 #define rglMultMatrixf glMultMatrixf
-#define rglViewport glViewport
 #else
 
 RGLDEF void rglEnd(void);
@@ -290,8 +321,6 @@ RGLDEF void rglColor4f(float r, float g, float b, float a);
 
 RGLDEF void rglVertex2f(float x, float y);
 RGLDEF void rglVertex3f(float x, float y, float z);
-
-#define rglViewport glViewport
 
 RGLDEF void rglMatrixMode(int mode);
 RGLDEF void rglPushMatrix(void);
@@ -510,6 +539,114 @@ void rglLineWidth(float width) {
 #endif    
 }
 
+void rglViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+    glViewport(x, y, width, height);
+    #endif
+}
+
+void rglClear(GLbitfield mask) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+    glClear(mask);
+    #endif
+}
+
+void rglClearColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+    glClearColor(red, green, blue, alpha);
+    #endif
+}
+
+void rglDeleteTextures(GLsizei n, const GLuint * textures) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+    glDeleteTextures(n, textures);
+    #endif
+}
+
+void rglPushPixelValues(i32 alignment, i32 rowLength, i32 skipPixels, i32 skipRows) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+	glPixelStorei(GL_UNPACK_ALIGNMENT, alignment);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, rowLength);
+	glPixelStorei(GL_UNPACK_SKIP_PIXELS, skipPixels);
+	glPixelStorei(GL_UNPACK_SKIP_ROWS, skipRows);
+    #endif
+}
+
+
+void rglTextureSwizzleMask(u32 atlas, u32 param, i32 swizzleRgbaParams[4]) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        glBindTexture(GL_TEXTURE_2D, atlas);
+        glTexParameteriv(GL_TEXTURE_2D, param, swizzleRgbaParams);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    #endif
+}
+
+void rglAtlasAddBitmap(u32 atlas, u8* bitmap, float x, float y, float width, float height) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        rglEnable(GL_TEXTURE_2D);
+
+        i32 alignment, rowLength, skipPixels, skipRows;
+        glGetIntegerv(GL_UNPACK_ALIGNMENT, &alignment);
+        glGetIntegerv(GL_UNPACK_ROW_LENGTH, &rowLength);
+        glGetIntegerv(GL_UNPACK_SKIP_PIXELS, &skipPixels);
+        glGetIntegerv(GL_UNPACK_SKIP_ROWS, &skipRows);
+
+        glBindTexture(GL_TEXTURE_2D, atlas);
+
+        rglPushPixelValues(1, width, 0, 0);
+
+        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_RED, GL_UNSIGNED_BYTE, bitmap);
+
+        rglPushPixelValues(alignment, rowLength, skipPixels, skipRows);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+    #endif
+}
+
+void rglDepthFunc(GLenum func) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        return glDepthFunc(func);
+    #endif
+}
+
+void rglCullFace(GLenum mode) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        glCullFace(mode);
+    #endif
+}
+
+void rglFrontFace(GLenum mode) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        glFrontFace(mode);
+    #endif
+}
+
+#ifdef RGL_OPENGL_43
+void rglClearDepth(float depth) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        glClearDepth(depth);
+    #endif
+}
+
+void rglBlendFunc(GLenum sfactor, GLenum dfactor) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        glBlendFunc(sfactor, dfactor);
+    #endif
+}
+#endif
+
+void rglHint(GLenum target, GLenum mode) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        glHint(target, mode);
+    #endif
+}
+
+void rglEnable(GLenum cap) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        glEnable(cap);
+    #endif
+}
+
 void rglSetTexture(u32 id) {
     #if defined(RGL_MODERN_OPENGL) && !defined(RGL_OPENGL_LEGACY)
     if (RGLinfo.legacy) 
@@ -535,33 +672,54 @@ void rglSetTexture(u32 id) {
 }
 
 u32 rglCreateTexture(u8* bitmap, u32 width, u32 height, u8 channels) {
-    unsigned int id = 0;
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        unsigned int id = 0;
 
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glGenTextures(1, &id);
-    glBindTexture(GL_TEXTURE_2D, id);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glGenTextures(1, &id);
+        glBindTexture(GL_TEXTURE_2D, id);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
-    
-    unsigned int c = 0;
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+        
+        unsigned int c = 0;
 
-    switch (channels) {
-        case 1: c = GL_RED; break;
-        case 2: c = GL_RG; break;
-        case 3: c = GL_RGB; break;
-        case 4: c = GL_RGBA; break;
-        default: break;
-    }
+        switch (channels) {
+            case 1: c = GL_RED; break;
+            case 2: c = GL_RG; break;
+            case 3: c = GL_RGB; break;
+            case 4: c = GL_RGBA; break;
+            default: break;
+        }
 
-    glTexImage2D(GL_TEXTURE_2D, 0, c, width, height, 0, c, GL_UNSIGNED_BYTE, bitmap);
+        glTexImage2D(GL_TEXTURE_2D, 0, c, width, height, 0, c, GL_UNSIGNED_BYTE, bitmap);
 
-    glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    #endif
 
     return id;
+}
+
+void rglUpdateTexture(u32 texture, u8* bitmap, u32 width, u32 height, u8 channels) {
+    #if defined(RGL_MODERN_OPENGL) || defined(RGL_OPENGL_LEGACY)
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+
+        u16 c = 0;
+        switch (channels) {
+            case 1: c = GL_RED; break;
+            case 2: c = GL_RG; break;
+            case 3: c = GL_RGB; break;
+            case 4: c = GL_RGBA; break;
+            default: break;
+        }
+
+        glTexImage2D(GL_TEXTURE_2D, 0, c, width,height, 0, c, GL_UNSIGNED_BYTE, bitmap);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    #endif
 }
 
 #ifdef RGL_DEBUG
