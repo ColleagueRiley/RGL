@@ -1,3 +1,4 @@
+#define RGL_EBO
 #define RGFW_WGL_NO_STENCIL
 #define RGL_IMPLEMENTATION
 #define RGFW_IMPLEMENTATION
@@ -5,7 +6,6 @@
 #define RGFW_NO_X11_CURSOR
 
 #define STB_IMAGE_IMPLEMENTATION
-
 #include "RGL.h"
 
 #include "RGFW.h"
@@ -25,7 +25,6 @@ void glPrerequisites(rect r, color c) {
     rglColor4ub(c.r, c.g, c.b, c.a);
     rglMatrixMode(RGL_PROJECTION);
     rglLoadIdentity();
-    rglPushMatrix();
 
     rglMatrixMode(RGL_MODELVIEW);
     rglPushMatrix();
@@ -95,17 +94,16 @@ int main() {
 
         rglSetTexture(RSGLtex);
         
-        rglBegin(RGL_QUADS_2D);
+        rglBegin(RGL_TRIANGLES_2D);
             rglTexCoord2f(0, 0); rglColor3f(1, 0, 0); rglVertex2f(-0.6, -0.75);
-            rglTexCoord2f(1, 0); rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
             rglTexCoord2f(1, 0); rglColor3f(0, 1, 0); rglVertex2f(0.6, -0.75);
             rglTexCoord2f(1, 1); rglColor3f(0, 0, 1); rglVertex2f(0, 0.75);
         rglEnd();
 
+        
         glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
-
         rglSetTexture(RGFWtex);
-        rglBegin(RGL_QUADS_2D);
+        rglBegin(RGL_TRIANGLES_2D);
         rglTexCoord2f(0, 0);
         rglColor4f(1, 0, 0, 1); 
         rglVertex3f(300, 300, 0);
@@ -113,18 +111,11 @@ int main() {
         rglTexCoord2f(1, 0);
         rglColor4f(0, 1, 0, 1); 
         rglVertex3f(400, 300, 0);
-        
-        rglTexCoord2f(1, 0);
-        rglColor4f(0, 1, 0, 1); 
-        rglVertex3f(400, 300, 0);
-        
+                
         rglTexCoord2f(0.5f, 1);
         rglColor4f(0, 0, 1, 1); 
         rglVertex3f(250, 400, 0);
         rglEnd();
-        
-
-        rglPopMatrix();
         rglPopMatrix();
 
         rglLoadIdentity();
