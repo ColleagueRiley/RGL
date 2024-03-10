@@ -1,4 +1,3 @@
-#define RGL_EBO
 #define RGFW_WGL_NO_STENCIL
 #define RGL_IMPLEMENTATION
 #define RGFW_IMPLEMENTATION
@@ -102,6 +101,7 @@ int main() {
 
         
         glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
+
         rglSetTexture(RGFWtex);
         rglBegin(RGL_TRIANGLES_2D);
         rglTexCoord2f(0, 0);
