@@ -18,7 +18,7 @@ typedef struct { int r, g, b, a; } color;
 
 float rotate[3] = {0, 0, 0};
 
-void glPrerequisites(rect r, color c) {
+void rglPrerequisites(rect r, color c) {
     int width = 500, height = 500;
 
     rglColor4ub(c.r, c.g, c.b, c.a);
@@ -70,10 +70,10 @@ int main() {
             }
         }
 
-        glViewport(0, 0, win->r.w, win->r.h);
+        rglViewport(0, 0, win->r.w, win->r.h);
 
-        glClearColor(255, 255, 255, 255);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        rglClearColor(255, 255, 255, 255);
+        rglClear(RGL_COLOR_BUFFER_BIT | RGL_DEPTH_BUFFER_BIT);
         
         rglLegacy(1);
         
@@ -100,7 +100,7 @@ int main() {
         rglEnd();
 
         
-        glPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
+        rglPrerequisites((rect){300, 300, 100, 100}, (color){255, 255, 255, 255});
 
         rglSetTexture(RGFWtex);
         rglBegin(RGL_TRIANGLES_2D);
@@ -125,8 +125,8 @@ int main() {
         RGFW_window_swapBuffers(win);
     }
 
-    glDeleteTextures(1, &RGFWtex);
-    glDeleteTextures(1, &RSGLtex);
+    rglDeleteTextures(1, &RGFWtex);
+    rglDeleteTextures(1, &RSGLtex);
 
     rglClose();
     RGFW_window_close(win);
