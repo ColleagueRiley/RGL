@@ -98,7 +98,7 @@ typedef ptrdiff_t GLsizeiptr;
 #define RGL_H
 
 #ifndef RGL_OPENGL_LEGACY
-//#define RGL_MODERN_OPENGL
+#define RGL_MODERN_OPENGL
 #if !defined(RGL_OPENGL_21) && !defined(RGL_OPENGL_33) && !defined(RGL_OPENGL_43)
 #define RGL_OPENGL_33
 #endif
@@ -171,16 +171,16 @@ typedef u8 b8;
 #define RGL_FASTEST				0x1101
 #define RGL_NICEST				0x1102
 
-#define GL_DEPTH_TEST               0x0B71
-#define GL_LEQUAL                   0x0203
-#define GL_ONE_MINUS_SRC_ALPHA      0x0303
-#define GL_BLEND                    0x0BE2
-#define GL_BACK                     0x0405
-#define GL_CCW                      0x0901
-#define GL_CULL_FACE                0x0B44
-#define GL_COLOR_BUFFER_BIT         0x00004000
-#define GL_DEPTH_BUFFER_BIT         0x00000100
-#define GL_SRC_ALPHA                0x0302
+#define RGL_DEPTH_TEST               0x0B71
+#define RGL_LEQUAL                   0x0203
+#define RGL_ONE_MINUS_SRC_ALPHA      0x0303
+#define RGL_BLEND                    0x0BE2
+#define RGL_BACK                     0x0405
+#define RGL_CCW                      0x0901
+#define RGL_CULL_FACE                0x0B44
+#define RGL_COLOR_BUFFER_BIT         0x00004000
+#define RGL_DEPTH_BUFFER_BIT         0x00000100
+#define RGL_SRC_ALPHA                0x0302
 #endif
 
 #ifndef GL_RG
