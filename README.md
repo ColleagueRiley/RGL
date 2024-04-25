@@ -14,6 +14,11 @@ Simple OpenGL version abstraction layer based on [RLGL](https://github.com/raysa
 ![RGL workflow windows](https://github.com/ColleagueRiley/RGL/actions/workflows/windows.yml/badge.svg)
 ![RGL workflow windows](https://github.com/ColleagueRiley/RGL/actions/workflows/macos.yml/badge.svg)
 
+# Contacts
+- email : ColleagueRiley@gmail.com 
+- discord : ColleagueRiley
+- discord server : https://discord.gg/pXVNgVVbvh
+
 # Documentation 
 For documentation read the `RGL.h` file and check out the example in `./example`
 
