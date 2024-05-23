@@ -43,6 +43,8 @@ MACRO #DEFINE ARGUMENTS
 #define RGL_OPENGL_ES2 - Load and use  opengl ES version 2 functionaries
 #define RGL_OPENGL_ES3 - Load and use  opengl ES version 3 functionaries
 
+#define RGL_NO_RENDER - Don't render anything
+
 Values
 
 #define RGL_MAX_BATCHES <x> - Set the max amount of batches (a batch is created when a different mode or texture is used), 
@@ -73,11 +75,18 @@ RLGL (raylib / Raysay5) - 	{UPDATE : Most of this code was actually based on or 
     #include <GL/gl.h>
 #endif
 
+#ifdef RGL_DIRECTX
+#include <d3d11.h>
+#include <dxgi.h>
+#include <dxgi.h>
+#include <d3dcompiler.h>
+#endif
+
 #if defined(__WIN32) && !defined(__linux__) && !defined(GL_VERTEX_SHADER)
 typedef char GLchar;
 typedef int	 GLsizei;
 typedef ptrdiff_t GLintptr;
-typedef ptrdiff_t GLsizeiptr;
+typedef uintptr_t GLsizeiptr;
 
 #define GL_VERTEX_SHADER   0x8B31
 #define GL_FRAGMENT_SHADER 0x8B30
@@ -97,9 +106,9 @@ typedef ptrdiff_t GLsizeiptr;
 #ifndef RGL_H
 #define RGL_H
 
-#ifndef RGL_OPENGL_LEGACY
+#if !defined(RGL_OPENGL_LEGACY)
 #define RGL_MODERN_OPENGL
-#if !defined(RGL_OPENGL_21) && !defined(RGL_OPENGL_33) && !defined(RGL_OPENGL_43)
+#if !defined(RGL_OPENGL_21) && !defined(RGL_OPENGL_33) && !defined(RGL_OPENGL_43) && !defined(RGL_NO_RENDER)
 #define RGL_OPENGL_33
 #endif
 #endif
@@ -174,6 +183,9 @@ typedef u8 b8;
 #define RGL_DEPTH_TEST               0x0B71
 #define RGL_LEQUAL                   0x0203
 #define RGL_ONE_MINUS_SRC_ALPHA      0x0303
+#endif
+
+#ifndef RGL_BLEND
 #define RGL_BLEND                    0x0BE2
 #define RGL_BACK                     0x0405
 #define RGL_CCW                      0x0901
@@ -236,6 +248,7 @@ typedef struct RGL_BATCH {
     i32 vertexCount;            /* Number of vertex of the draw */
     i32 vertexAlignment;        /* Number of vertex required for index alignment (LINES, TRIANGLES) */
     u32 tex;     /* Texture id to be used on the draw -> Use to create new draw call if changes */
+    u32 program;
     float lineWidth;
 } RGL_BATCH;
 
@@ -250,6 +263,7 @@ RGLDEF void rglRenderBatch(void);                         /* Draw render batch d
 RGLDEF void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocation, u32 colorLocation);
 
 RGLDEF void rglSetTexture(u32 id);               /* Set current texture for render batch and check buffers limits */
+RGLDEF void rglSetProgram(u32 id);               /* Set current shader program for render batch and check buffers limits */
 RGLDEF u32 rglCreateTexture(u8* bitmap, u32 width, u32 height, u8 channels); /* create texture */
 RGLDEF void rglUpdateTexture(u32 texture, u8* bitmap, u32 width, u32 height, u8 channels); /* update texture */
 RGLDEF void rglDeleteTextures(GLsizei n, const GLuint * textures);
@@ -335,6 +349,58 @@ RGLDEF RGL_MATRIX rglMatrixIdentity(void);                       /* Get identity
 RGLDEF RGL_MATRIX rglMatrixMultiply(float left[16], float right[16]);  /* Multiply two matrices */
 
 RGLDEF i32 rglCheckRenderBatchLimit(int vCount);                             /* Check internal buffer overflow for a given number of vertex */
+
+typedef struct RGL_INFO {
+	RGL_MATRIX transform; /* transformation matrix*/
+    #ifdef RGL_ALLOC_MATRIX_STACK 
+    RGL_MATRIX* stack
+    #else
+    RGL_MATRIX stack[RGL_MAX_MATRIX_STACK_SIZE]; /* RGL_MATRIX stack for push/pop */
+    #endif
+
+    RGL_MATRIX* matrix;              /* Current matrix pointer */
+    RGL_MATRIX modelview;                   /* Default modelview matrix */
+    RGL_MATRIX projection;                  /* Default projection matrix */
+    RGL_BATCH* batches;          /* Draw calls array, depends on tex */
+
+    u16* indices;
+    
+    float* vertices;
+	float* colors;
+    float* tcoords;
+
+    i32 vertexCounter;                  /* Current active render batch vertex counter (generic, used for all batches) */
+    
+    i32 matrixMode;              /* Current matrix mode */
+
+	u8 transformRequired;
+
+    i32 stackCounter;                   /* RGL_MATRIX stack counter */
+
+    u32 tex;      /* Default texture used on shapes/poly drawing (required by shader)*/
+
+    #ifdef RGL_MODERN_OPENGL
+    u32 vShader;      /* Default vertex shader id (used by default shader program)*/
+    u32 fShader;      /* Default fragment shader id (used by default shader program)*/
+    u32 mvp;
+    #endif
+
+    u32 program;       /* Default shader program id, supports vertex color and diffuse texture*/
+    u32 defaultProgram;       /* Default shader program id, supports vertex color and diffuse texture*/
+    u32 defaultTex;
+    u32 elementCount;
+
+    i32 bufferCount;            /* Number of vertex buffers (multi-buffering support) */
+    i32 currentBuffer;          /* Current buffer tracking in case of multi-buffering */
+    i32 drawCounter;            /* Draw calls counter */
+
+    float lineWidth;    /* Default lineWidth used on shapes/poly drawing (required by shader)*/
+    float tcoord[3];
+    float color[4];
+
+    u32 vao, vbo, tbo, cbo, ebo; /* array object and array buffers */
+    u8 legacy;
+} RGL_INFO;
 
 #ifndef RGL_NO_GL_LOADER
 #define RGL_PROC_DEF(proc, name) name##SRC = (name##PROC)proc(#name)
@@ -469,57 +535,6 @@ extern int RGL_loadGLModern(RGLloadfunc proc);
 #endif
 
 #ifndef RGL_OPENGL_LEGACY
-typedef struct RGL_INFO {
-	RGL_MATRIX transform; /* transformation matrix*/
-    #ifdef RGL_ALLOC_MATRIX_STACK 
-    RGL_MATRIX* stack
-    #else
-    RGL_MATRIX stack[RGL_MAX_MATRIX_STACK_SIZE]; /* RGL_MATRIX stack for push/pop */
-    #endif
-
-    RGL_MATRIX* matrix;              /* Current matrix pointer */
-    RGL_MATRIX modelview;                   /* Default modelview matrix */
-    RGL_MATRIX projection;                  /* Default projection matrix */
-    RGL_BATCH* batches;          /* Draw calls array, depends on tex */
-
-    u16* indices;
-    
-    float* vertices;
-	float* colors;
-    float* tcoords;
-
-    i32 vertexCounter;                  /* Current active render batch vertex counter (generic, used for all batches) */
-    
-    i32 matrixMode;              /* Current matrix mode */
-
-	u8 transformRequired;
-
-    i32 stackCounter;                   /* RGL_MATRIX stack counter */
-
-    u32 tex;      /* Default texture used on shapes/poly drawing (required by shader)*/
-
-    #ifdef RGL_MODERN_OPENGL
-    u32 vShader;      /* Default vertex shader id (used by default shader program)*/
-    u32 fShader;      /* Default fragment shader id (used by default shader program)*/
-    u32 mvp;
-    #endif
-
-    u32 program;       /* Default shader program id, supports vertex color and diffuse texture*/
-    u32 defaultTex;
-    u32 elementCount;
-
-    i32 bufferCount;            /* Number of vertex buffers (multi-buffering support) */
-    i32 currentBuffer;          /* Current buffer tracking in case of multi-buffering */
-    i32 drawCounter;            /* Draw calls counter */
-
-    float lineWidth;    /* Default lineWidth used on shapes/poly drawing (required by shader)*/
-    float tcoord[3];
-    float color[4];
-
-    u32 vao, vbo, tbo, cbo, ebo; /* array object and array buffers */
-    u8 legacy;
-} RGL_INFO;
-
 RGL_INFO RGLinfo;
 #endif /* RGL_MODERN_OPENGL */
 
@@ -548,6 +563,17 @@ void rglViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
     if (RGLinfo.legacy)
     #endif
         glViewport(x, y, width, height);
+
+    #ifdef RGL_DIRECTX
+    D3D11_VIEWPORT viewport;
+    viewport.TopLeftX = 0;
+    viewport.TopLeftY = 0;
+    viewport.Width = win->r.w;
+    viewport.Height = win->r.h;
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    dxInfo.pDeviceContext->lpVtbl->RSSetViewports(RGL_dxInfo.pDeviceContext, 1, &viewport);
+    #endif
 }
 
 void rglClear(GLbitfield mask) {
@@ -570,6 +596,12 @@ void rglDeleteTextures(GLsizei n, const GLuint * textures) {
     #endif
         glDeleteTextures(n, textures);
 }
+
+#ifndef GL_UNPACK_ROW_LENGTH
+#define GL_UNPACK_ROW_LENGTH 0x0CF2
+#define GL_UNPACK_SKIP_PIXELS 0x0CF4
+#define GL_UNPACK_SKIP_ROWS 0x0CF3
+#endif
 
 void rglPushPixelValues(i32 alignment, i32 rowLength, i32 skipPixels, i32 skipRows) {
     #if !defined(RGL_MODERN_OPENGL) && !defined(RGL_OPENGL_LEGACY)
@@ -696,6 +728,26 @@ void rglSetTexture(u32 id) {
 #endif
 }
 
+#define RGL_UNUSED(x) if (x){}
+
+void rglSetProgram(u32 id) {
+#ifndef RGL_OPENGL_LEGACY
+    if (RGLinfo.program == id)
+        return;
+
+    RGLinfo.program = id;
+    
+    if (id == 0)
+        RGLinfo.program = RGLinfo.defaultProgram;
+
+    RGLinfo.vertexCounter += RGLinfo.batches[RGLinfo.drawCounter - 1].vertexAlignment;
+    RGLinfo.drawCounter++;
+    RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount = 0;
+#else
+    RGL_UNUSED(id);
+#endif
+}
+
 u32 rglCreateTexture(u8* bitmap, u32 width, u32 height, u8 channels) {
     unsigned int id = 0;
 
@@ -750,7 +802,7 @@ void rglUpdateTexture(u32 texture, u8* bitmap, u32 width, u32 height, u8 channel
 #ifdef RGL_DEBUG
 #include <stdio.h>
 
-void RGL_opengl_getError() {
+void RGL_opengl_getError(void) {
 	GLenum err;
 	while ((err = glGetError()) != GL_NO_ERROR) {
 		switch (err) {
@@ -825,6 +877,17 @@ void rglBegin(int mode) {
 }
 #endif
 
+#ifdef RGL_DIRECTX
+typedef struct {
+	IDXGIFactory* pFactory;
+	IDXGIAdapter* pAdapter;
+	ID3D11Device* pDevice;
+	ID3D11DeviceContext* pDeviceContext;
+} RGFW_directXinfo;
+
+RGFW_directXinfo RGL_dxInfo;
+#endif
+
 /* Initialize RGLinfo: OpenGL extensions, default buffers/shaders/textures, OpenGL states*/
 void rglInit(void *loader) {
 #ifndef RGL_OPENGL_LEGACY
@@ -839,9 +902,14 @@ void rglInit(void *loader) {
     }
     #endif
 
+    #ifdef RGL_DIRECTX
+    RGL_dxInfo = (RGFW_directXinfo)loader;
+    #endif
+
     RGLinfo.legacy = 0; 
 
     #ifdef RGL_MODERN_OPENGL
+    
     static const char *defaultVShaderCode = RGL_MULTILINE_STR(
     #if defined(RGL_OPENGL_21)
         \x23version 120                       \n
@@ -931,20 +999,88 @@ void rglInit(void *loader) {
     #endif
 
 	/* create program and link vertex and fragment shaders */
-	RGLinfo.program = glCreateProgram();
+	RGLinfo.defaultProgram = glCreateProgram();
 
-	glAttachShader(RGLinfo.program, RGLinfo.vShader);
-	glAttachShader(RGLinfo.program, RGLinfo.fShader);
+	glAttachShader(RGLinfo.defaultProgram, RGLinfo.vShader);
+	glAttachShader(RGLinfo.defaultProgram, RGLinfo.fShader);
 
-    glBindAttribLocation(RGLinfo.program, 0, "vertexPosition");
-    glBindAttribLocation(RGLinfo.program, 1, "vertexTexCoord");
-    glBindAttribLocation(RGLinfo.program, 2, "vertexColor");
+    glBindAttribLocation(RGLinfo.defaultProgram, 0, "vertexPosition");
+    glBindAttribLocation(RGLinfo.defaultProgram, 1, "vertexTexCoord");
+    glBindAttribLocation(RGLinfo.defaultProgram, 2, "vertexColor");
 
-	glLinkProgram(RGLinfo.program);
+	glLinkProgram(RGLinfo.defaultProgram);
 
     /* Set default shader locations: uniform locations */
-    RGLinfo.mvp  = glGetUniformLocation(RGLinfo.program, "mvp");
+    RGLinfo.mvp  = glGetUniformLocation(RGLinfo.defaultProgram, "mvp");
 
+    RGLinfo.program = RGLinfo.defaultProgram;
+    #endif
+
+    #ifdef RGL_DIRECTX
+    const char* shaderString = MULTILINE_STR(
+        typedef struct {float x, y, z;} Vertex;
+
+        struct VOut
+        {
+            float4 position : SV_POSITION;
+        };
+
+        VOut VS(float4 position : POSITION)
+        {
+            VOut output;
+
+            output.position = position;
+
+            return output;
+        }
+
+
+        float4 PS(float4 position : SV_POSITION) : SV_TARGET
+        {
+            return float4(1.0, 0.0, 0.0, 1.0);
+        }
+    );
+
+    D3D11_BUFFER_DESC bd;
+    ZeroMemory(&bd, sizeof(bd));
+
+    bd.Usage = D3D11_USAGE_DYNAMIC;
+    bd.ByteWidth = sizeof(Vertex) * 3;
+    bd.BindFlags = D3D11 _BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    RGL_dxInfo.pDevice->lpVtbl->CreateBuffer(RGL_dxInfo.pDevice, &bd, NULL, &pVertexBuffer);
+
+    D3D11_MAPPED_SUBRESOURCE ms;
+    RGL_dxInfo.pDeviceContext->lpVtbl->Map(RGL_dxInfo.pDeviceContext, (ID3D11Resource*)pVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &ms);
+    memcpy(ms.pData, vertices, sizeof(vertices));
+    RGL_dxInfo.pDeviceContext->lpVtbl->Unmap(RGL_dxInfo.pDeviceContext, (ID3D11Resource*)pVertexBuffer, 0);   
+
+    // Compile shaders
+    ID3D10Blob* pVertexShaderBlob = NULL;
+    ID3D10Blob* pPixelShaderBlob = NULL;
+    ID3D10Blob* pErrorBlob = NULL;
+
+    D3DCompile(shaderString, strlen(shaderString), NULL, NULL, NULL, "VS", "vs_5_0", 0, 0, &pVertexShaderBlob, &pErrorBlob);
+    D3DCompile(shaderString, strlen(shaderString), NULL, NULL, NULL, "PS", "ps_5_0", 0, 0, &pPixelShaderBlob, &pErrorBlob);
+
+    // Create shaders
+    ID3D11VertexShader* pVertexShader;
+    ID3D11PixelShader* pPixelShader;
+    RGL_dxInfo.pDevice->lpVtbl->CreateVertexShader(RGL_dxInfo.pDevice, pVertexShaderBlob->lpVtbl->GetBufferPointer(pVertexShaderBlob), pVertexShaderBlob->lpVtbl->GetBufferSize(pVertexShaderBlob), NULL, &pVertexShader);
+    RGL_dxInfo.pDevice->lpVtbl->CreatePixelShader(RGL_dxInfo.pDevice, pPixelShaderBlob->lpVtbl->GetBufferPointer(pPixelShaderBlob), pPixelShaderBlob->lpVtbl->GetBufferSize(pPixelShaderBlob), NULL, &pPixelShader);
+    
+    RGL_dxInfo.pDeviceContext->lpVtbl->VSSetShader(RGL_dxInfo.pDeviceContext, pVertexShader, 0, 0);
+    RGL_dxInfo.pDeviceContext->lpVtbl->PSSetShader(RGL_dxInfo.pDeviceContext, pPixelShader, 0, 0);
+
+    // Set input layout
+    ID3D11InputLayout* pInputLayout;
+    D3D11_INPUT_ELEMENT_DESC layout[] = {
+        {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+    };
+    
+    RGL_dxInfo.pDevice->lpVtbl->CreateInputLayout(RGL_dxInfo.pDevice, layout, 1, pVertexShaderBlob->lpVtbl->GetBufferPointer(pVertexShaderBlob), pVertexShaderBlob->lpVtbl->GetBufferSize(pVertexShaderBlob), &pInputLayout);
+    RGL_dxInfo.pDeviceContext->lpVtbl->IASetInputLayout(RGL_dxInfo.pDeviceContext, pInputLayout);
     #endif
 
     /* Init default vertex arrays buffers */
@@ -1042,6 +1178,7 @@ void rglInit(void *loader) {
         RGLinfo.batches[i].vertexCount = 0;
         RGLinfo.batches[i].vertexAlignment = 0;
         RGLinfo.batches[i].tex = RGLinfo.tex;
+        RGLinfo.batches[i].program = RGLinfo.program;
         RGLinfo.batches[i].lineWidth = RGLinfo.lineWidth;
     }
 
@@ -1060,6 +1197,8 @@ void rglInit(void *loader) {
     #ifdef RGL_DEBUG
     rglGetError();
     #endif
+#else
+    RGL_UNUSED(loader);
 #endif
 }
 
@@ -1113,12 +1252,12 @@ void rglClose(void) {
 #ifdef RGL_MODERN_OPENGL
     glUseProgram(0);
 
-    glDetachShader(RGLinfo.program, RGLinfo.vShader);
-    glDetachShader(RGLinfo.program, RGLinfo.fShader);
+    glDetachShader(RGLinfo.defaultProgram, RGLinfo.vShader);
+    glDetachShader(RGLinfo.defaultProgram, RGLinfo.fShader);
     glDeleteShader(RGLinfo.vShader);
     glDeleteShader(RGLinfo.fShader);
 
-    glDeleteProgram(RGLinfo.program);
+    glDeleteProgram(RGLinfo.defaultProgram);
 
     glDeleteTextures(1, &RGLinfo.tex); /* Unload default texture */
 #endif
@@ -1134,11 +1273,13 @@ void rglRenderBatch() {
 }
 
 void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocation, u32 colorLocation) {
+    /* for legacy rendering */
+    RGL_UNUSED(program); RGL_UNUSED(vertexLocation)  RGL_UNUSED(texCoordLocation) RGL_UNUSED(colorLocation)
 #ifndef RGL_OPENGL_LEGACY
     if (RGLinfo.legacy)
         return;
 
-#ifdef RGL_MODERN_OPENGL
+#if defined(RGL_MODERN_OPENGL) && !defined(RGL_NO_RENDER)
     if (RGLinfo.vertexCounter > 0) {
         #if !defined(RGL_OPENGL_21) && !defined(RGL_OPENGL_ES2)
         glBindVertexArray(RGLinfo.vao);
@@ -1195,7 +1336,7 @@ void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocat
 
         u32 vertexOffset;
         u32 i;
-        for (i = 1, vertexOffset = 0; i < RGLinfo.drawCounter; i++) {
+        for (i = 1, vertexOffset = 0; i < (u32)RGLinfo.drawCounter; i++) {
             GLenum mode = RGLinfo.batches[i].mode;
             
             if (mode > 0x0010) {
@@ -1211,6 +1352,8 @@ void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocat
             /* Bind current draw call texture, activated as GL_TEXTURE0 and Bound to sampler2D texture0 by default */
             glBindTexture(GL_TEXTURE_2D, RGLinfo.batches[i].tex);
             glLineWidth(RGLinfo.batches[i].lineWidth);
+            
+            glUseProgram(RGLinfo.batches[i].program);
             
             #ifdef RGL_EBO
             if (mode != RGL_QUADS && mode != RGL_TRIANGLE_FAN) 
@@ -1256,6 +1399,7 @@ void rglRenderBatchWithShader(u32 program, u32 vertexLocation, u32 texCoordLocat
     for (i = 0; i < RGL_MAX_BATCHES; i++) {
         RGLinfo.batches[i].vertexCount = 0;
         RGLinfo.batches[i].tex = RGLinfo.tex;
+        RGLinfo.batches[i].program = RGLinfo.program;
         RGLinfo.batches[i].lineWidth = RGLinfo.lineWidth;
     }
 
@@ -1297,6 +1441,8 @@ void rglLegacy(u8 state) {
     #ifndef RGL_OPENGL_LEGACY
     if (state != 2)
         RGLinfo.legacy = state;
+    #else
+    RGL_UNUSED(state);
     #endif
 }
 
@@ -1318,12 +1464,6 @@ void rglGetError(void) {
                 case GL_INVALID_OPERATION:
                     printf("OpenGL error: GL_INVALID_OPERATION\n");
                     break;
-                case GL_STACK_OVERFLOW:
-                    printf("OpenGL error: GL_STACK_OVERFLOW\n");
-                    break;
-                case GL_STACK_UNDERFLOW:
-                    printf("OpenGL error: GL_STACK_UNDERFLOW\n");
-                    break;	
                 default:
                     printf("OpenGL error: Unknown error code 0x%x\n", err);
                     break;
@@ -1337,7 +1477,7 @@ void rglGetError(void) {
 #ifndef RGL_OPENGL_LEGACY
 
 int rglCheckRenderBatchLimit(int vCount) {
-    if (RGLinfo.legacy || (RGLinfo.vertexCounter + vCount) < (RGLinfo.elementCount * 4))
+    if (RGLinfo.legacy || (RGLinfo.vertexCounter + vCount) < (i64)(RGLinfo.elementCount * 4))
         return 0;
 
     /* Store current primitive drawing mode and texture id */
@@ -1348,6 +1488,7 @@ int rglCheckRenderBatchLimit(int vCount) {
     /* Restore state of last batch so we can continue adding vertices */
     RGLinfo.batches[RGLinfo.drawCounter - 1].mode = currentMode;
     RGLinfo.batches[RGLinfo.drawCounter - 1].tex = RGLinfo.tex;
+    RGLinfo.batches[RGLinfo.drawCounter - 1].program = RGLinfo.program;
     RGLinfo.batches[RGLinfo.drawCounter - 1].lineWidth = RGLinfo.lineWidth;
     return 1; 
 }
@@ -1355,14 +1496,19 @@ int rglCheckRenderBatchLimit(int vCount) {
 /* Initialize drawing mode (how to organize vertex) */
 void rglBegin(int mode) {
     if (RGLinfo.legacy) {
-        if (mode > 0x0010)
+        if (mode > 0x0010) {
             mode -= 0x0010;
+            glDisable(GL_DEPTH_TEST);
+        }
+        else 
+            glEnable(GL_DEPTH_TEST);
         
         return glBegin(mode);
     }
 
     if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode != mode ||
         RGLinfo.batches[RGLinfo.drawCounter - 1].tex != RGLinfo.tex ||
+        RGLinfo.batches[RGLinfo.drawCounter - 1].program != RGLinfo.program ||
         RGLinfo.batches[RGLinfo.drawCounter - 1].lineWidth != RGLinfo.lineWidth ||
         RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount > 0) {
             if (RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES_2D) 
@@ -1383,6 +1529,7 @@ void rglBegin(int mode) {
             RGLinfo.batches[RGLinfo.drawCounter - 1].mode = mode;
             RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount = 0;
             RGLinfo.batches[RGLinfo.drawCounter - 1].tex = RGLinfo.tex;
+            RGLinfo.batches[RGLinfo.drawCounter - 1].program = RGLinfo.program;
             RGLinfo.batches[RGLinfo.drawCounter - 1].lineWidth= RGLinfo.lineWidth;
         }
 }
@@ -1447,7 +1594,7 @@ void rglVertex3f(float x, float y, float z) {
         tz = RGLinfo.transform.m[2] * x + RGLinfo.transform.m[6] * y + RGLinfo.transform.m[10] * z + RGLinfo.transform.m[14];
     }
 
-    if (RGLinfo.vertexCounter > (RGLinfo.elementCount * 4 - 4)) {
+    if (RGLinfo.vertexCounter > (i64)(RGLinfo.elementCount * 4 - 4)) {
         if ((RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES || RGLinfo.batches[RGLinfo.drawCounter - 1].mode == RGL_LINES_2D) &&
             (RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount%2 == 0))
                 rglCheckRenderBatchLimit(2 + 1);
@@ -1471,6 +1618,7 @@ void rglVertex3f(float x, float y, float z) {
     RGLinfo.vertexCounter++;
     RGLinfo.batches[RGLinfo.drawCounter - 1].vertexCount++;
     RGLinfo.batches[RGLinfo.drawCounter - 1].tex = RGLinfo.tex;
+    RGLinfo.batches[RGLinfo.drawCounter - 1].program = RGLinfo.program;
     RGLinfo.batches[RGLinfo.drawCounter - 1].lineWidth = RGLinfo.lineWidth;
 }
 

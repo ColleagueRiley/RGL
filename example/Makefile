@@ -1,7 +1,9 @@
 NAME = main
 CC = gcc
 
-LIBS := -lXinput -lShcore -lopengl32 -lshell32 -lgdi32 -lm --static
+FLAGS = -Wall -Werror -Wstrict-prototypes -Wextra
+
+LIBS := -lXinput -lwinmm -lShcore -lopengl32 -lshell32 -lgdi32 -lm --static
 
 ifneq (,$(filter $(CC),winegcc x86_64-w64-mingw32-gcc))
     detected_OS := Windows
@@ -19,7 +21,7 @@ endif
 OUTPUT = $(NAME).exe
 
 ifeq ($(detected_OS),Windows)
-	LIBS := -lXinput -lShcore -lopengl32 -lshell32 -lgdi32 -lm --static
+	LIBS := -lwinmm -lXinput -lShcore -lopengl32 -lshell32 -lgdi32 -lm --static
 endif
 ifeq ($(detected_OS),Darwin)        # Mac OS X, I hate you Steve Jobs
 	LIBS := -lm -framework Foundation -framework AppKit -framework OpenGL -framework CoreVideo -w
@@ -35,10 +37,10 @@ all:
 	make gl-$(OUTPUT)
 
 $(OUTPUT):
-	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -o $(OUTPUT)
+	$(CC) $(FLAGS) main.c $(LIBS) -I./ext -I../ -Wall -o $(OUTPUT)
 
 gl-$(OUTPUT):
-	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_OPENGL_LEGACY -o gl-$(OUTPUT)
+	$(CC) $(FLAGS) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_OPENGL_LEGACY -o gl-$(OUTPUT)
 
 clean:
 	rm $(OUTPUT) gl-$(OUTPUT) $(NAME) gl-$(OUTPUT) -f
@@ -46,8 +48,8 @@ clean:
 debug:
 	make clean
 
-	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -o $(OUTPUT)
-	$(CC) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -D RGL_OPENGL_LEGACY -o gl-$(OUTPUT)
+	$(CC) $(FLAGS) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -o $(OUTPUT)
+	$(CC) $(FLAGS) main.c $(LIBS) -I./ext -I../ -Wall -D RGL_DEBUG -D RGL_OPENGL_LEGACY -o gl-$(OUTPUT)
 
 	./$(OUTPUT)
 	./gl-$(OUTPUT)

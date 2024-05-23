@@ -38,7 +38,7 @@ void rglPrerequisites(rect r, color c) {
     rglTranslatef(-(r.x + (r.w / 2)), -(r.x + (r.h / 2)), 0);
 }
 
-int main() {
+int main(void) {
     #ifdef RGL_MODERN_OPENGL
     RGFW_setGLVersion(3, 3);
     #endif
