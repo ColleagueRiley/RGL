@@ -1,6 +1,10 @@
 # RGL (Riley's OpenGL abstraction Layer)
 ![logo](logo.png)
 
+As of 5/28/2024, RGL is no longer going to be actively updated
+
+I will probably still respond to issues and pull requests, if any come up.
+
 Simple OpenGL version abstraction layer based on [RLGL](https://github.com/raysan5/raylib/blob/master/src/rlgl.h). 
 
 - Allows you to use Modern OpenGL using the simple pipeline format.
@@ -45,6 +49,11 @@ To implement a new backend you'll have to.
     * rglAtlasAddBitmap
 * Render the data supplied to `rglRenderBatchWithShader` via the backend
 * Ensure all of the backend's allocated data is freed in `rglClose`
+
+# known issues
+- No EBO 
+- 3D rendering doesn't seem to work
+- shader options need to be added/check
 
 # Credits
 
