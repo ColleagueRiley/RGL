@@ -97,10 +97,12 @@ typedef uintptr_t GLsizeiptr;
 #define GL_TEXTURE0 0x84C0
 #endif
 
+#ifndef RGLDEF
 #ifdef __APPLE__
 #define RGLDEF extern inline
 #else
 #define RGLDEF inline
+#endif
 #endif
 
 #ifndef RGL_H
