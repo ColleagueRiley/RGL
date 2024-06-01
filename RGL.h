@@ -440,6 +440,10 @@ typedef GLint (*glGetUniformLocationPROC)(GLuint program, const GLchar *name);
 typedef void (*glUniformMatrix4fvPROC)(GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 typedef void (*glTexImage2DPROC)(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels);
 typedef void (*glActiveTexturePROC) (GLenum texture);
+typedef void (*glUniform1fPROC) (GLint location, GLfloat v0);
+typedef void (*glUniform2fPROC) (GLint location, GLfloat v0, GLfloat v1);
+typedef void (*glUniform3fPROC) (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
+typedef void (*glUniform4fPROC) (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
 
 glShaderSourcePROC glShaderSourceSRC = NULL;
 glCreateShaderPROC glCreateShaderSRC = NULL;
@@ -467,6 +471,10 @@ glGenBuffersPROC glGenBuffersSRC = NULL;
 glGetUniformLocationPROC glGetUniformLocationSRC = NULL;
 glUniformMatrix4fvPROC glUniformMatrix4fvSRC = NULL;
 glActiveTexturePROC glActiveTextureSRC = NULL;
+glUniform1fPROC glUniform1fSRC = NULL;
+glUniform2fPROC glUniform2fSRC = NULL;
+glUniform3fPROC glUniform3fSRC = NULL;
+glUniform4fPROC glUniform4fSRC = NULL;
 
 #if defined(RGL_OPENGL_ES2) && !defined(RGL_OPENGL_ES3)
 typedef void (* PFNGLGENVERTEXARRAYSOESPROC) (GLsizei n, GLuint *arrays);
@@ -482,6 +490,10 @@ glBindVertexArrayPROC glBindVertexArraySRC = NULL;
 glDeleteVertexArraysPROC glDeleteVertexArraysSRC = NULL;
 #endif
 
+#define glUniform1f glUniform1fSRC
+#define glUniform2f glUniform2fSRC
+#define glUniform3f glUniform3fSRC
+#define glUniform4f glUniform4fSRC
 #define glActiveTexture glActiveTextureSRC
 #define glShaderSource glShaderSourceSRC
 #define glCreateShader glCreateShaderSRC
@@ -1833,6 +1845,10 @@ int RGL_loadGLModern(RGLloadfunc proc) {
     RGL_PROC_DEF(proc, glGetUniformLocation);
     RGL_PROC_DEF(proc, glUniformMatrix4fv);
     RGL_PROC_DEF(proc, glActiveTexture);
+    RGL_PROC_DEF(proc, glUniform1f);
+    RGL_PROC_DEF(proc, glUniform2f);
+    RGL_PROC_DEF(proc, glUniform3f);
+    RGL_PROC_DEF(proc, glUniform4f);
 
     #if defined(RGL_OPENGL_ES2) && !defined(RGL_OPENGL_ES3)
         glGenVertexArraysSRC = (PFNGLGENVERTEXARRAYSOESPROC)((RGLloadfunc)loader)("glGenVertexArraysOES");
